@@ -9,6 +9,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"log"
+	"os"
+	"strconv"
+	"time"
 )
 
 const (
@@ -44,20 +47,41 @@ func RdmsInit(config *PostgresConfig) (*sql.DB, error) {
 	dbUrl := fmt.Sprintf("host=%s port=%s user=%s " + "password=%s dbname=%s sslmode=disable",
 		     config.Host, config.Port, config.Username, config.Password, config.Database)
 
+	maxOpenConnection, err := strconv.Atoi(os.Getenv("POSTGRES_MAX_CONN"))
+	if err != nil {
+		log.Println(err)
+		maxOpenConnection = 5
+	}
+	maxIdleTime, err := strconv.Atoi(os.Getenv("POSTGRES_MAX_IDLE_TIME"))
+	if err != nil {
+		log.Println(err)
+		maxIdleTime = 5
+	}
+	maxConnectionLifetime, err := strconv.Atoi(os.Getenv("POSTGRES_MAX_LIFETIME"))
+	if err != nil {
+		log.Println(err)
+		maxConnectionLifetime = 2
+	}
+
 	db, err := sql.Open(postgresDriver, dbUrl)
 	if err != nil {
 		return nil, err
 	}
 
-	defer func(db *sql.DB) {
-		err := db.Close()
-		if err != nil {
-			return
-		}
-	}(db)
+	db.SetMaxIdleConns(maxOpenConnection)
+	db.SetConnMaxLifetime(time.Duration(maxConnectionLifetime) * time.Minute)
+	db.SetConnMaxIdleTime(time.Duration(maxIdleTime) * time.Minute)
+
+	//defer func(db *sql.DB) {
+	//	err := db.Close()
+	//	if err != nil {
+	//		return
+	//	}
+	//}(db)
 
 	err = db.Ping()
 	if err != nil {
+		log.Print(err)
 		return nil, err
 	}
 	// Log The Connection

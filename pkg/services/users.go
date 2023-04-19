@@ -8,6 +8,7 @@ import (
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"github.com/chsys/userauthenticationengine/pkg/lib/logger"
 	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
+	"net/http"
 	"net/mail"
 	"strings"
 )
@@ -46,10 +47,10 @@ func (u *UserServiceClass) SignUp(ctx context.Context, request dto.SignUpRequest
 	}
 
 	emailExist, err := u.repo.FindByEmail(ctx, strings.TrimSpace(email.Address))
-	if emailExist{
+	if emailExist {
 		logger.Debug("Users already Exists.")
 		return nil, errs.NewValidationError("user already exist")
-	}else if err != nil {
+	}else if err != nil  && err.Code != http.StatusInternalServerError {
 		logger.Debug(err.Message)
 		return nil, errs.NewUnexpectedError(err.Message)
 	}
@@ -58,7 +59,7 @@ func (u *UserServiceClass) SignUp(ctx context.Context, request dto.SignUpRequest
 	if usernameExist {
 		logger.Debug("User Name already Exists.")
 		return nil, errs.NewValidationError("User Name already exist")
-	}else if err != nil {
+	}else if err != nil && err.Code != http.StatusInternalServerError {
 		logger.Debug(err.Message)
 		return nil, errs.NewUnexpectedError(err.Message)
 	}
@@ -72,7 +73,7 @@ func (u *UserServiceClass) SignUp(ctx context.Context, request dto.SignUpRequest
 		return nil, errs.NewValidationError(err.Message)
 	}
 
-	newUser := domain.CreateNewUser(request.UserName, request.FirstName, request.LastName, hashedPassword, email.Address, request.Address ,request.PhoneNumber, false )
+	newUser := domain.CreateNewUser(request.UserName, request.FirstName, request.LastName, hashedPassword, email.Address, request.UserType ,request.Address ,request.PhoneNumber, false )
 	userDetails, err := u.repo.SaveUser(ctx, newUser)
 	if err != nil {
 		logger.Debug(err.Message)
@@ -80,7 +81,7 @@ func (u *UserServiceClass) SignUp(ctx context.Context, request dto.SignUpRequest
 	}
 
 	// Get Data From DTO
-	resp := userDetails.ToDto()
+	resp := userDetails.ToSignUpDTO()
 
 	return resp, nil
 }

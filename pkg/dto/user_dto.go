@@ -16,6 +16,8 @@ type SignUpRequest struct {
 	Password  	string 	`json:"password"`
 	PhoneNumber int32 	`json:"phone_number"`
 	Address		*string `json:"address"`
+	IsAdmin		*bool	`json:"is_admin"`
+	UserType	string	`json:"user_type"`
 }
 
 type UserResponse struct {
@@ -36,7 +38,6 @@ type UserResponse struct {
 type SignUpResponse struct {
 	Success		bool
 	Message		string
-	UserDetails *UserResponse
 }
 
 
@@ -45,7 +46,6 @@ func (r *SignUpRequest) SignUpValidate() *errs.AppError{
 	if err != nil {
 		return errs.NewValidationError("invalid email address")
 	}
-
 	if strUtil.IsBlank(strings.TrimSpace(r.FirstName)) {
 		return errs.NewValidationError("Firstname cannot be empty")
 	}
@@ -53,6 +53,9 @@ func (r *SignUpRequest) SignUpValidate() *errs.AppError{
 		return errs.NewValidationError("Lastname cannot be empty")
 	}
 
+	if strUtil.IsBlank(strings.TrimSpace(r.UserType)) {
+		return errs.NewValidationError("User Type cannot be empty")
+	}
 	passwordValidatorError := utility.PasswordValidator(r.Password, false)
 	if passwordValidatorError != nil {
 		return passwordValidatorError
