@@ -12,6 +12,11 @@ func ReadRDB() string {
 	return db
 }
 
+func ReadRDBSchema() string {
+	schema := os.Getenv("SCHEMA")
+	return schema
+}
+
 func ReadRDBHost() string {
 	dbHost := os.Getenv("DB_HOST")
 	return dbHost

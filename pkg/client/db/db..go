@@ -21,6 +21,7 @@ type PostgresConfig struct {
 	Port		string
 	Username 	string
 	Password	string
+	Schema		string
 	Database	string
 }
 

@@ -29,6 +29,7 @@ func Init()  {
 			Port:     utility.ReadRDBPort(),
 			Username: utility.ReadRDBUser(),
 			Password: utility.ReadRDBPassword(),
+			Schema: utility.ReadRDBSchema(),
 			Database: utility.ReadRDB(),
 		},
 		MongoDB: &db.MongoConfig{

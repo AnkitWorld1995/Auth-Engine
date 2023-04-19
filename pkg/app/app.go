@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"github.com/chsys/userauthenticationengine/config"
 	"github.com/chsys/userauthenticationengine/pkg/client/db"
+	"github.com/chsys/userauthenticationengine/pkg/domain"
 	"github.com/chsys/userauthenticationengine/pkg/handler"
 	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
 	"github.com/chsys/userauthenticationengine/pkg/middleware"
+	"github.com/chsys/userauthenticationengine/pkg/services"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
@@ -50,6 +52,10 @@ func StartApp(config *config.AppConfig) {
 
 	pingHandler := handler.PingHandler{}
 	router.Handle(http.MethodGet, "/ping", pingHandler.Ping())
+
+	userHandler  := handler.UserHandler{UserService: services.NewUserServiceClass(domain.NewUserRepoClass(dbClient, mongoClient, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection ))}
+	router.Handle(http.MethodPost, "/sign-up", userHandler.SignUp())
+
 	/*
 		1. Register The Router a Method router.GET With Our Request Handler Function.
 		2. In the handler function, we return the message back to client.
