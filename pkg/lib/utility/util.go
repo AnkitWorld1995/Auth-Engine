@@ -9,21 +9,11 @@ import (
 
 
 type primitives struct {
-	wg 	*sync.WaitGroup
-	rwg	*sync.RWMutex
-	mux	*sync.Mutex
-}
-
-func InitCspPrimitives(wg *sync.WaitGroup, rwg *sync.RWMutex, mux *sync.Mutex) *primitives {
-	return &primitives{
-		wg:  wg,
-		rwg: rwg,
-		mux: mux,
-	}
+	cond 	*sync.Cond
 }
 
 func GenHashAndSaltPassword(password string) (string, *errs.AppError) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MaxCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 	if err != nil {
 		return "", errs.NewUnexpectedError(err.Error())
 	}

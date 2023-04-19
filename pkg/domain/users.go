@@ -15,6 +15,7 @@ type Users struct {
 	Phone		int32	`json:"phone"`
 	Address 	*string	`json:"address"`
 	IsAdmin		bool	`json:"is_admin"`
+	UserType	string	`json:"user_type"`
 	CreatedAt	string	`json:"created_at"`
 	UpdatedAt 	string	`json:"updated_at"`
 }
@@ -27,28 +28,15 @@ type UserResponse struct {
 
 
 
-func (u *UserResponse) ToDto() *dto.SignUpResponse {
+func (u *UserResponse) ToSignUpDTO() *dto.SignUpResponse {
 	return &dto.SignUpResponse{
 		Success:     u.Success,
 		Message:     u.Message,
-		UserDetails: &dto.UserResponse {
-			UserID:    u.UserDetails.UserID,
-			UserName:  u.UserDetails.UserName,
-			FirstName: u.UserDetails.FirstName,
-			LastName:  u.UserDetails.LastName,
-			Password:  u.UserDetails.Password,
-			Email:     u.UserDetails.Email,
-			Phone:     u.UserDetails.Phone,
-			Address:   u.UserDetails.Address,
-			IsAdmin:   u.UserDetails.IsAdmin,
-			CreatedAt: u.UserDetails.CreatedAt,
-			UpdatedAt: u.UserDetails.UpdatedAt,
-		},
 	}
 }
 
 
-func CreateNewUser(userName , firstName, lastName, password, email string, address *string, phone int32, isAdmin bool) *Users{
+func CreateNewUser(userName , firstName, lastName, password, email, userType string, address *string, phone int32, isAdmin bool) *Users{
 	return &Users{
 		UserName:  userName,
 		FirstName: firstName,
@@ -58,6 +46,7 @@ func CreateNewUser(userName , firstName, lastName, password, email string, addre
 		Phone:     phone,
 		Address:   address,
 		IsAdmin:   isAdmin,
+		UserType:  userType,
 		CreatedAt: time.Now().Format("2014-11-12 11:45:26.371 +05:30 UTC"),
 		UpdatedAt: time.Now().Format("2014-11-12 11:45:26.371 +05:30 UTC"),
 	}
