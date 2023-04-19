@@ -25,12 +25,12 @@ func Init()  {
 	userCollection[constants.MongoCollectionName] = utility.ReadNSQLCollection()
 	appConfig := &AppConfig{
 		RdmsDB:  &db.PostgresConfig{
-			Host:     utility.ReadRDBHost(),
-			Port:     utility.ReadRDBPort(),
-			Username: utility.ReadRDBUser(),
-			Password: utility.ReadRDBPassword(),
-			Schema: utility.ReadRDBSchema(),
-			Database: utility.ReadRDB(),
+			Host:     	utility.ReadRDBHost(),
+			Port:     	utility.ReadRDBPort(),
+			Username: 	utility.ReadRDBUser(),
+			Password: 	utility.ReadRDBPassword(),
+			Schema: 	utility.ReadRDBSchema(),
+			Database: 	utility.ReadRDB(),
 		},
 		MongoDB: &db.MongoConfig{
 			Host:            utility.ReadNSQLHost(),

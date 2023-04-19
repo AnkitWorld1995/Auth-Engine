@@ -1,2 +1,2 @@
 run-dev:
-	go run cmd/main.go
+	go run .\ main.go
