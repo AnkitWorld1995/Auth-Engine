@@ -1,11 +1,27 @@
 package utility
 
 import (
+	"github.com/chsys/userauthenticationengine/pkg/lib/constants"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"golang.org/x/crypto/bcrypt"
+	"strings"
 	"sync"
 	"unicode"
 )
+
+
+
+var accountType map[string]string
+
+func init() {
+	userAccountType := make(map[string]string, 3)
+	userAccountType[constants.Root] 	  = constants.RootAdminAccountType
+	userAccountType[constants.User]  	  = constants.UserAccountType
+	userAccountType[constants.SalesRoot]  = constants.SalesAdminAccountType
+
+	accountType = userAccountType
+}
+
 
 
 type primitives struct {
@@ -68,4 +84,13 @@ func PasswordValidator(password string, isSignIn bool) *errs.AppError {
 		return errs.NewValidationError("password do not match the criteria of at least one upper case, one lower case, one number, one special character and minimum of 8 characters.")
 	}
 
+}
+
+
+func MapUserAccountType(userType string) (string, *errs.AppError) {
+	if accountType, ok := accountType[strings.ToLower(userType)]; !ok {
+		return "",errs.NewValidationError("Incorrect Account Type. User account Type Must be Either Sales Root A/C | Root Admin A/C | User A/C")
+	}else{
+		return accountType, nil
+	}
 }

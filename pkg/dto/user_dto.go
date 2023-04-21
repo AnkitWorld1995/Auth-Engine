@@ -4,6 +4,7 @@ import (
 	strUtil "github.com/agrison/go-commons-lang/stringUtils"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
+	"net/http"
 	"net/mail"
 	"strings"
 )
@@ -56,6 +57,13 @@ func (r *SignUpRequest) SignUpValidate() *errs.AppError{
 	if strUtil.IsBlank(strings.TrimSpace(r.UserType)) {
 		return errs.NewValidationError("User Type cannot be empty")
 	}
+
+	userAccountType, mapErr := utility.MapUserAccountType(r.UserType)
+	if mapErr !=nil && mapErr.Code == http.StatusUnprocessableEntity {
+		return errs.NewValidationError(mapErr.Message)
+	}
+	r.UserType = userAccountType
+
 	passwordValidatorError := utility.PasswordValidator(r.Password, false)
 	if passwordValidatorError != nil {
 		return passwordValidatorError

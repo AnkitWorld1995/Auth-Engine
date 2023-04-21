@@ -47,7 +47,7 @@ func CreateNewUser(userName , firstName, lastName, password, email, userType str
 		Address:   address,
 		IsAdmin:   isAdmin,
 		UserType:  userType,
-		CreatedAt: time.Now().Format("2014-11-12 11:45:26.371 +05:30 UTC"),
-		UpdatedAt: time.Now().Format("2014-11-12 11:45:26.371 +05:30 UTC"),
+		CreatedAt: time.Now().UTC().Format(time.RFC822),
+		UpdatedAt: time.Now().UTC().Format(time.RFC822),
 	}
 }
