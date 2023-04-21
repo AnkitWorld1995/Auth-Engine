@@ -60,8 +60,9 @@ func (r *UserRepoClass) SaveUser(ctx context.Context, user *Users) (*UserRespons
 
 	sqlQuery := fmt.Sprintf(`INSERT INTO %s.users
 				(user_name, first_name, last_name, "password", email, phone, address, is_admin, user_type, created_at, updated_at)
-				VALUES( ?, ?, ?, ?, ?, ?, ?, ?, ?, now(), now());`, r.dbSchema)
-	inputArgs = append(inputArgs, user.UserName, user.FirstName, user.LastName, user.Password, user.Email, user.Phone, user.Address, user.IsAdmin, user.UserType)
+				VALUES( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, r.dbSchema)
+	inputArgs = append(inputArgs, user.UserName, user.FirstName, user.LastName, user.Password, user.Email,
+				user.Phone, user.Address, user.IsAdmin, user.UserType, user.CreatedAt, user.UpdatedAt)
 
 	tx, err := r.db.Begin()
 	if err != nil {
