@@ -8,6 +8,7 @@ import (
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"github.com/chsys/userauthenticationengine/pkg/lib/logger"
 	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
+	"github.com/chsys/userauthenticationengine/pkg/mapper"
 	"net/http"
 	"net/mail"
 	"strings"
@@ -15,15 +16,17 @@ import (
 
 type UserServiceClass struct {
 	repo 	domain.UserRepository
+	mapper  mapper.RequestMapper
 }
 
 
 func NewUserServiceClass(repo domain.UserRepository) *UserServiceClass {
-	return &UserServiceClass{repo: repo}
+	return &UserServiceClass{repo: repo, mapper: mapper.NewRequestMapper(repo)}
 }
 
 type UserService interface {
 	SignUp(ctx context.Context, request dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError)
+	SignIn(ctx context.Context, request *dto.SignInRequest) (*dto.SignInResponse, *errs.AppError)
 }
 
 
@@ -83,5 +86,20 @@ func (u *UserServiceClass) SignUp(ctx context.Context, request dto.SignUpRequest
 	// Get Data From DTO
 	resp := userDetails.ToSignUpDTO()
 
+	return resp, nil
+}
+
+func (u *UserServiceClass) SignIn(ctx context.Context, request *dto.SignInRequest) (*dto.SignInResponse, *errs.AppError){
+	err := u.mapper.ValidatedSignIn(ctx,request)
+	if err != nil {
+		return nil, err
+	}
+
+	userDetails, err :=  u.repo.GetUser(ctx, &request.UserName)
+	if err != nil {
+		logger.Debug(err.Message)
+		return nil, errs.NewUnexpectedError(err.Message)
+	}
+	resp := userDetails.ToSignInDTO()
 	return resp, nil
 }

@@ -53,9 +53,9 @@ func StartApp(config *config.AppConfig) {
 	pingHandler := handler.PingHandler{}
 	router.Handle(http.MethodGet, "/ping", pingHandler.Ping())
 
-	userHandler  := handler.UserHandler{UserService: services.NewUserServiceClass(domain.NewUserRepoClass(dbClient, mongoClient, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection ))}
+	userHandler  := handler.UserHandler{UserService: services.NewUserServiceClass(domain.NewUserRepoClass(dbClient, mongoClient, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection))}
 	router.Handle(http.MethodPost, "/sign-up", userHandler.SignUp())
-
+	router.Handle(http.MethodGet,  "/sign-in", userHandler.SignIn())
 	/*
 		1. Register The Router a Method router.GET With Our Request Handler Function.
 		2. In the handler function, we return the message back to client.

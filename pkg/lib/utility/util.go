@@ -36,9 +36,9 @@ func GenHashAndSaltPassword(password string) (string, *errs.AppError) {
 	return string(hash), nil
 }
 
-func ComparePassword(hashedPassword []byte, newPwd string) bool {
-	transMutePwd := []byte(newPwd)
-	err := bcrypt.CompareHashAndPassword(hashedPassword, transMutePwd)
+func ComparePassword(hashedPwd string, plainPwd []byte) bool {
+	byteHash := []byte(hashedPwd)
+	err := bcrypt.CompareHashAndPassword(byteHash, plainPwd)
 	if err != nil {
 		return false
 	}

@@ -32,6 +32,8 @@ type UserRepository interface {
 	FindByEmail(ctx context.Context, email string) (bool, *errs.AppError)
 	FindByUserName(ctx context.Context, userName string) (bool, *errs.AppError)
 	SaveUser(ctx context.Context, user *Users) (*UserResponse, *errs.AppError)
+	GetPassword(ctx context.Context, cond *string) (string, *errs.AppError)
+	GetUser(ctx context.Context, cond *string) (*Users, *errs.AppError)
 }
 
 func (r *UserRepoClass) FindByEmail(ctx context.Context, email string) (bool, *errs.AppError) {
@@ -46,7 +48,7 @@ func (r *UserRepoClass) FindByEmail(ctx context.Context, email string) (bool, *e
 
 func (r *UserRepoClass) FindByUserName(ctx context.Context, userName string) (bool, *errs.AppError) {
 	var userExist sql.NullBool
-	query := fmt.Sprintf(`SELECT 1 FROM %s."users" WHERE "email" = $1`, r.dbSchema)
+	query := fmt.Sprintf(`SELECT 1 FROM %s."users" WHERE "user_name" = $1`, r.dbSchema)
 	err := r.db.QueryRowContext(ctx, query, userName).Scan(&userExist)
 	if err != nil {
 		return false, errs.NewUnexpectedError(err.Error())
@@ -98,4 +100,67 @@ func (r *UserRepoClass) SaveUser(ctx context.Context, user *Users) (*UserRespons
 		return &userResp, errs.NewUnexpectedError("Rows Unaffected.")
 	}
 
+}
+
+func (r *UserRepoClass) GetPassword(ctx context.Context, cond *string) (string, *errs.AppError) {
+	var password sql.NullString
+
+	sqlQuery := fmt.Sprintf(`SELECT urs."password" FROM %s."users" urs WHERE (urs.user_name = $1 or urs.email = $2)`, r.dbSchema)
+
+	err := r.db.QueryRowContext(ctx, sqlQuery, cond, cond).Scan(&password)
+	if err != nil || !password.Valid {
+		return "", errs.NewUnexpectedError(err.Error())
+	}
+
+	return password.String, nil
+}
+
+func (r *UserRepoClass) GetUser(ctx context.Context, cond *string) (*Users, *errs.AppError) {
+	var userResp = Users{}
+	sqlQuery := fmt.Sprintf(`select
+									id,
+									user_id,
+									user_name,
+									first_name,
+									last_name,
+									"password",
+									email,
+									phone,
+									address,
+									is_admin,
+									user_type,
+									created_at,
+									updated_at
+								from
+									%s.users
+								where
+									(user_name = ? or email = ?);`, r.dbSchema)
+
+	sqlQuery = sqlx.Rebind(sqlx.DOLLAR, sqlQuery)
+	err := r.db.QueryRowContext(ctx, sqlQuery, cond, cond).Scan(&userResp.ID,
+																&userResp.UserID,
+																&userResp.UserName,
+																&userResp.FirstName,
+																&userResp.LastName,
+																&userResp.Password,
+																&userResp.Email,
+																&userResp.Phone,
+																&userResp.Address,
+																&userResp.IsAdmin,
+																&userResp.UserType,
+																&userResp.CreatedAt,
+																&userResp.UpdatedAt)
+	if err != nil {
+		return nil, errs.NewUnexpectedError(err.Error())
+	}
+
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			logger.Error(  fmt.Sprintf("GetUser: Defer Sql Func Error: %s", err.Error()))
+			return
+		}
+	}(r.db)
+
+	return &userResp, nil
 }

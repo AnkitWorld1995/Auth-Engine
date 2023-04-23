@@ -38,3 +38,27 @@ func (u *UserHandler) SignUp() gin.HandlerFunc {
 		}
 	}
 }
+
+
+func (u *UserHandler) SignIn() gin.HandlerFunc{
+	return func (ctx *gin.Context){
+		resp := new(dto.SignInRequest)
+		err := json.NewDecoder(ctx.Request.Body).Decode(&resp)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"Message": err.Error(),
+			})
+			return
+		}else {
+			userDetails, err := u.UserService.SignIn(ctx, resp)
+			if err != nil {
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"Message": err.Message,
+				})
+				return
+			} else {
+				ctx.JSON(http.StatusOK, userDetails)
+			}
+		}
+	}
+}
