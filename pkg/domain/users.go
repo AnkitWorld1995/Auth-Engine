@@ -6,7 +6,8 @@ import (
 )
 
 type Users struct {
-	UserID		string 	`json:"id"`
+	ID 			string	`json:"id"`
+	UserID		string 	`json:"user_id"`
 	UserName 	string	`json:"user_name"`
 	FirstName	string	`json:"first_name"`
 	LastName	string	`json:"last_name"`
@@ -32,6 +33,23 @@ func (u *UserResponse) ToSignUpDTO() *dto.SignUpResponse {
 	return &dto.SignUpResponse{
 		Success:     u.Success,
 		Message:     u.Message,
+	}
+}
+
+func (u *Users) ToSignInDTO() *dto.SignInResponse {
+	return &dto.SignInResponse{
+		ID:        u.ID,
+		UserID:    u.UserID,
+		UserName:  u.UserName,
+		FirstName: u.FirstName,
+		LastName:  u.LastName,
+		Email:     u.Email,
+		Phone:     u.Phone,
+		Address:   u.Address,
+		IsAdmin:   u.IsAdmin,
+		UserType:  u.UserType,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
 	}
 }
 

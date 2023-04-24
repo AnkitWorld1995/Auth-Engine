@@ -1,9 +1,12 @@
 package utility
 
 import (
+	"fmt"
 	"github.com/chsys/userauthenticationengine/pkg/lib/constants"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"golang.org/x/crypto/bcrypt"
+	"log"
+	"net/mail"
 	"strings"
 	"sync"
 	"unicode"
@@ -36,9 +39,17 @@ func GenHashAndSaltPassword(password string) (string, *errs.AppError) {
 	return string(hash), nil
 }
 
-func ComparePassword(hashedPassword []byte, newPwd string) bool {
-	transMutePwd := []byte(newPwd)
-	err := bcrypt.CompareHashAndPassword(hashedPassword, transMutePwd)
+func ParseMail(email string) string {
+	emailAddress, err := mail.ParseAddress(email)
+	if err != nil {
+		log.Fatalln(fmt.Sprintf("Utility, ParseMail Error: %s ", err.Error()))
+	}
+	return emailAddress.Address
+}
+
+func ComparePassword(hashedPwd string, plainPwd []byte) bool {
+	byteHash := []byte(hashedPwd)
+	err := bcrypt.CompareHashAndPassword(byteHash, plainPwd)
 	if err != nil {
 		return false
 	}
