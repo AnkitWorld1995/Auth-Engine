@@ -41,7 +41,7 @@ func (r *UserRepoClass) FindByEmail(ctx context.Context, email string) (bool, *e
 	query := fmt.Sprintf(`SELECT 1 FROM %s."users" WHERE "email" = $1`, r.dbSchema)
 	err := r.db.QueryRowContext(ctx, query, email).Scan(&emailExist)
 	if err != nil {
-		return false, errs.NewUnexpectedError(err.Error())
+		return false, errs.NewUnexpectedError("Email Not Found")
 	}
 	return emailExist.Bool, nil
 }
@@ -51,7 +51,7 @@ func (r *UserRepoClass) FindByUserName(ctx context.Context, userName string) (bo
 	query := fmt.Sprintf(`SELECT 1 FROM %s."users" WHERE "user_name" = $1`, r.dbSchema)
 	err := r.db.QueryRowContext(ctx, query, userName).Scan(&userExist)
 	if err != nil {
-		return false, errs.NewUnexpectedError(err.Error())
+		return false, errs.NewUnexpectedError("User Name Not Found")
 	}
 	return userExist.Bool, nil
 }
@@ -151,16 +151,14 @@ func (r *UserRepoClass) GetUser(ctx context.Context, cond *string) (*Users, *err
 																&userResp.CreatedAt,
 																&userResp.UpdatedAt)
 	if err != nil {
+		defer func(db *sql.DB) {
+			err := db.Close()
+			if err != nil {
+				logger.Error(  fmt.Sprintf("GetUser: Defer Sql Func Error: %s", err.Error()))
+				return
+			}
+		}(r.db)
 		return nil, errs.NewUnexpectedError(err.Error())
 	}
-
-	defer func(db *sql.DB) {
-		err := db.Close()
-		if err != nil {
-			logger.Error(  fmt.Sprintf("GetUser: Defer Sql Func Error: %s", err.Error()))
-			return
-		}
-	}(r.db)
-
 	return &userResp, nil
 }

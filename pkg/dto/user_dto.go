@@ -84,3 +84,15 @@ func (r *SignUpRequest) SignUpValidate() *errs.AppError{
 	return nil
 }
 
+
+func (r *SignInRequest) SignInValidate() *errs.AppError {
+	if strUtil.IsBlank(strings.TrimSpace(r.UserName)) {
+		return errs.NewValidationError("User Name is empty")
+	}
+
+	if strUtil.IsBlank(strings.TrimSpace(r.Password)) {
+		return errs.NewValidationError("Password is empty")
+	}
+
+	return nil
+}
