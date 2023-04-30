@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/chsys/userauthenticationengine/config"
 	"github.com/chsys/userauthenticationengine/pkg/client/db"
+	"github.com/chsys/userauthenticationengine/pkg/client/sso"
 	"github.com/chsys/userauthenticationengine/pkg/domain"
 	"github.com/chsys/userauthenticationengine/pkg/handler"
 	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
@@ -20,6 +21,7 @@ import (
 */
 
 func StartApp(config *config.AppConfig) {
+
 	/*
 		Start RDMS Database.
 	*/
@@ -27,35 +29,45 @@ func StartApp(config *config.AppConfig) {
 	if err != nil {
 		log.Fatalln("R-Database Error",err.Error())
 	}
-	log.Println("The DB Client", dbClient)
+	log.Println("The DB ClientSecret", dbClient)
+
 	/*
 		Start No-SQL Database.
 	*/
-
 	mongoClient, err := db.MongoInit(config.MongoDB)
 	if err != nil{
-		log.Fatalln("Mongo Client Error",err.Error())
+		log.Fatalln("Mongo ClientSecret Error",err.Error())
 	}
-	log.Println("The Mongo Client", mongoClient)
+	log.Println("The Mongo ClientSecret", mongoClient)
+
+	keyCloakClient := sso.KeyCloakInit(config.KeyCloak)
+	log.Println("The Key-Cloak client", keyCloakClient)
 
 	port := utility.ReadPort()
 	log.Printf("Starting Server on http://localhost:%v", port)
+
 	//Create A Router Using Gin.
 	router := gin.Default()
+	keyCloakMiddleware:= sso.KeyCloakMiddleware{Keycloak: config.KeyCloak}
 
 	/*
 		Registering A Middleware.
 	*/
+
 	router.Use(middleware.RequestContextGinLogger())
 	router.Use(middleware.GinContextToContextMiddleware())
 	router.Use(middleware.GinCORSMiddleware())
+	//router.Use(keyCloakMiddleware.VerifyJWTToken())
 
 	pingHandler := handler.PingHandler{}
 	router.Handle(http.MethodGet, "/ping", pingHandler.Ping())
 
 	userHandler  := handler.UserHandler{UserService: services.NewUserServiceClass(domain.NewUserRepoClass(dbClient, mongoClient, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection))}
 	router.Handle(http.MethodPost, "/sign-up", userHandler.SignUp())
-	router.Handle(http.MethodGet,  "/sign-in", userHandler.SignIn())
+	//router.Handle(http.MethodGet,  "/sign-in", userHandler.SignIn())
+	router.Handle(http.MethodGet, "/sso-sign-in", userHandler.SSOLogIn(keyCloakMiddleware))
+	router.Handle(http.MethodGet, "/get-user", userHandler.GetUser(keyCloakMiddleware))
+
 	/*
 		1. Register The Router a Method router.GET With Our Request Handler Function.
 		2. In the handler function, we return the message back to client.

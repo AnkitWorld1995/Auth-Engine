@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"context"
 	strUtil "github.com/agrison/go-commons-lang/stringUtils"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
@@ -8,6 +9,9 @@ import (
 	"net/mail"
 	"strings"
 )
+
+type key SignInRequest
+var userKey key
 
 type SignUpRequest struct {
 	UserName 	string 	`json:"user_name"`
@@ -45,7 +49,6 @@ type SignInResponse struct {
 	CreatedAt	string	`json:"created_at"`
 	UpdatedAt 	string	`json:"updated_at"`
 }
-
 
 
 func (r *SignUpRequest) SignUpValidate() *errs.AppError{
@@ -95,4 +98,12 @@ func (r *SignInRequest) SignInValidate() *errs.AppError {
 	}
 
 	return nil
+}
+
+
+
+func JwtContext(ctx context.Context) (*SignInRequest, bool){
+	//log.Println("All Keys", ctx.Value())
+	ctv, ok := ctx.Value(key{}).(SignInRequest)
+	return &ctv, ok
 }
