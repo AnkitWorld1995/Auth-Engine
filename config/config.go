@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"github.com/Nerzal/gocloak/v7"
 	"github.com/chsys/userauthenticationengine/pkg/client/db"
+	"github.com/chsys/userauthenticationengine/pkg/client/sso"
 	"github.com/chsys/userauthenticationengine/pkg/lib/constants"
 	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
 	"log"
@@ -16,6 +18,7 @@ import (
 type AppConfig struct {
 	RdmsDB	 *db.PostgresConfig
 	MongoDB  *db.MongoConfig
+	KeyCloak *sso.KeyCloak
 }
 
 var applicationConfig *AppConfig
@@ -41,6 +44,12 @@ func Init()  {
 			Database:        utility.ReadNSQLDatabase(),
 			UserCollection:  userCollection,
 			AdminCollection: nil,
+		},
+		KeyCloak: &sso.KeyCloak{
+			GoCloak:      gocloak.NewClient("http://localhost:8086"),
+			ClientId:     "auth-svc",
+			ClientSecret: "SACqjRGHCnNs3po9V4BcwKqLj4hDVmZg",
+			Realm:        "Authentication-SVC",
 		},
 	}
 	applicationConfig = appConfig

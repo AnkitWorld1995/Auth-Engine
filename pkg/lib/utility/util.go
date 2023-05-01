@@ -1,11 +1,14 @@
 package utility
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/chsys/userauthenticationengine/pkg/lib/constants"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
+	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"log"
+	"net/http"
 	"net/mail"
 	"strings"
 	"sync"
@@ -104,4 +107,21 @@ func MapUserAccountType(userType string) (string, *errs.AppError) {
 	}else{
 		return accountType, nil
 	}
+}
+
+
+// MarshallContext Must be Refactored To integrate Properly with functions.
+func MarshallContext(value any) ([]byte,*gin.Context){
+	ctx := &gin.Context{}
+
+	value, err := json.Marshal(value)
+	if err != nil {
+		ctx.JSON(http.StatusBadGateway, gin.H{
+			"Success": false,
+			"Message": "Failed To un Marshall",
+		})
+		ctx.Abort()
+		return nil,  ctx
+	}
+	return value.([]byte), ctx
 }

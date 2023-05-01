@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"context"
 	strUtil "github.com/agrison/go-commons-lang/stringUtils"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
@@ -8,6 +9,9 @@ import (
 	"net/mail"
 	"strings"
 )
+
+type key SignInRequest
+var userKey key
 
 type SignUpRequest struct {
 	UserName 	string 	`json:"user_name"`
@@ -46,6 +50,22 @@ type SignInResponse struct {
 	UpdatedAt 	string	`json:"updated_at"`
 }
 
+type JWTResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresIn    int    `json:"expiresIn"`
+}
+
+type ResetPasswordRequest struct {
+	UserName    string `json:"user_name"`
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
+}
+
+type GenericResponse struct {
+	Success 	bool	`json:"success"`
+	Message 	string	`json:"message"`
+}
 
 
 func (r *SignUpRequest) SignUpValidate() *errs.AppError{
@@ -92,6 +112,37 @@ func (r *SignInRequest) SignInValidate() *errs.AppError {
 
 	if strUtil.IsBlank(strings.TrimSpace(r.Password)) {
 		return errs.NewValidationError("Password is empty")
+	}
+
+	return nil
+}
+
+
+
+func JwtContext(ctx context.Context) (*SignInRequest, bool){
+	//log.Println("All Keys", ctx.Value())
+	ctv, ok := ctx.Value(key{}).(SignInRequest)
+	return &ctv, ok
+}
+
+func(r *ResetPasswordRequest) OnDTO() *SignInRequest {
+	return &SignInRequest{
+		UserName: r.UserName,
+		Password: r.NewPassword,
+	}
+}
+
+func(r *ResetPasswordRequest) RestPasswordValidation() *errs.AppError {
+	if strUtil.IsBlank(strings.TrimSpace(r.UserName)) {
+		return errs.NewValidationError("User Name is empty")
+	}
+
+	if strUtil.IsBlank(strings.TrimSpace(r.OldPassword)) {
+		return errs.NewValidationError("Old Password is empty")
+	}
+
+	if strUtil.IsBlank(strings.TrimSpace(r.NewPassword)) {
+		return errs.NewValidationError("New Password is empty")
 	}
 
 	return nil

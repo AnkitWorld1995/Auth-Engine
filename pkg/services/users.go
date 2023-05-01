@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/agrison/go-commons-lang/stringUtils"
 	"github.com/chsys/userauthenticationengine/pkg/domain"
 	"github.com/chsys/userauthenticationengine/pkg/dto"
@@ -9,6 +10,7 @@ import (
 	"github.com/chsys/userauthenticationengine/pkg/lib/logger"
 	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
 	"github.com/chsys/userauthenticationengine/pkg/mapper"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -28,6 +30,10 @@ func NewUserServiceClass(repo domain.UserRepository) *userServiceClass {
 type UserService interface {
 	SignUp(ctx context.Context, request dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError)
 	SignIn(ctx context.Context, request *dto.SignInRequest) (*dto.SignInResponse, *errs.AppError)
+	SSOSignIn(ctx context.Context, data string) (*dto.JWTResponse,bool, *errs.AppError)
+	GetUser(ctx context.Context, data any) (*dto.SignInResponse, *errs.AppError)
+	CreateUser(ctx context.Context, request *dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError)
+	ResetPassword(ctx context.Context, request *dto.ResetPasswordRequest) (*dto.GenericResponse, *errs.AppError)
 }
 
 
@@ -65,6 +71,10 @@ func (u *userServiceClass) SignUp(ctx context.Context, request dto.SignUpRequest
 	return resp, nil
 }
 
+
+/*
+	Note: Decommission SignIn Method if SSO-LogIn and Get-User Method IS Fully Up and Functional.
+*/
 func (u *userServiceClass) SignIn(ctx context.Context, request *dto.SignInRequest) (*dto.SignInResponse, *errs.AppError){
 	err := request.SignInValidate()
 	if err != nil {
@@ -87,4 +97,103 @@ func (u *userServiceClass) SignIn(ctx context.Context, request *dto.SignInReques
 	}
 	resp := userDetails.ToSignInDTO()
 	return resp, nil
+}
+
+func (u *userServiceClass) SSOSignIn(ctx context.Context, data string) (*dto.JWTResponse,bool, *errs.AppError) {
+	var reqData domain.JWTRequest
+
+	err := json.Unmarshal([]byte(data), &reqData)
+	if err != nil {
+		return nil,false, errs.NewValidationError(err.Error())
+	}
+
+	_, appErr := u.valid.ValidateUserName(ctx,  reqData.Username)
+	if err != nil {
+		return nil, false, errs.NewValidationError(appErr.Message)
+	}
+
+	appErr = u.valid.ValidatePassword(ctx, reqData.Password, reqData.Username)
+	if err != nil {
+		return nil, false, errs.NewValidationError(appErr.Message)
+	}
+
+	resp := reqData.ToDTOJwtResponse()
+	return resp, true, nil
+}
+
+func (u *userServiceClass) GetUser(ctx context.Context, data any) (*dto.SignInResponse, *errs.AppError) {
+	var respData domain.UserInfo
+	val := data.(map[string]string)
+	userData := val["User-Info"]
+
+	err := json.Unmarshal([]byte(userData), &respData)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, errs.NewValidationError(err.Error())
+	}
+
+	userDetails, appErr :=  u.repo.GetUser(ctx, respData.PreferredUsername)
+	if err != nil {
+		logger.Debug(appErr.Message)
+		return nil, errs.NewUnexpectedError(appErr.Message)
+	}
+	resp := userDetails.ToSignInDTO()
+	return resp, nil
+}
+
+func(u *userServiceClass) CreateUser(ctx context.Context, request *dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError) {
+	err := request.SignUpValidate()
+	if err != nil {
+		return nil, err
+	}
+
+	hashedPassword, err := utility.GenHashAndSaltPassword(request.Password)
+	if stringUtils.IsBlank(hashedPassword) && err != nil {
+		logger.Debug(err.Message)
+		return nil, errs.NewValidationError(err.Message)
+	}
+
+	newUser := domain.CreateNewUser(request.UserName, request.FirstName, request.LastName, hashedPassword, utility.ParseMail(request.Email), request.UserType ,request.Address ,request.PhoneNumber, false )
+	userDetails, err := u.repo.SaveUser(ctx, newUser)
+	if err != nil {
+		logger.Debug(err.Message)
+		return nil, errs.NewUnexpectedError(err.Message)
+	}
+
+	resp := userDetails.ToSignUpDTO()
+	return resp, nil
+}
+
+func (u *userServiceClass) ResetPassword(ctx context.Context, request *dto.ResetPasswordRequest) (*dto.GenericResponse, *errs.AppError) {
+	err := request.RestPasswordValidation()
+	if err != nil {
+		return &dto.GenericResponse{
+				Success: false,
+				Message: err.Message,
+		}, err
+	}
+
+	err = u.valid.ValidatePassword(ctx, request.OldPassword, request.UserName)
+	if err != nil {
+		return &dto.GenericResponse{
+				Success: false,
+				Message: err.Message,
+		},  errs.NewValidationError(err.Message)
+	}
+
+	hashedPassword, err := utility.GenHashAndSaltPassword(request.NewPassword)
+	if stringUtils.IsBlank(hashedPassword) && err != nil {
+		logger.Debug(err.Message)
+		return &dto.GenericResponse{
+				Success: false,
+				Message: err.Message,
+		}, errs.NewValidationError(err.Message)
+	}
+
+	// Send Notification Via kafka or aws SNS
+
+	return &dto.GenericResponse{
+		Success: true,
+		Message: "Password Updated Successfully.",
+	}, nil
 }
