@@ -67,7 +67,7 @@ func StartApp(config *config.AppConfig) {
 	//router.Handle(http.MethodGet,  "/sign-in", userHandler.SignIn())
 	router.Handle(http.MethodGet, "/sso-sign-in", userHandler.SSOLogIn(keyCloakMiddleware))
 	router.Handle(http.MethodGet, "/get-user", userHandler.GetUser(keyCloakMiddleware))
-
+	router.Handle(http.MethodPost, "/reset-password", userHandler.ResetPassword(keyCloakMiddleware))
 	/*
 		1. Register The Router a Method router.GET With Our Request Handler Function.
 		2. In the handler function, we return the message back to client.
@@ -83,6 +83,5 @@ func StartApp(config *config.AppConfig) {
 		//RequestContextGinLogger
 		return
 	}
-
 
 }

@@ -30,9 +30,10 @@ func NewUserServiceClass(repo domain.UserRepository) *userServiceClass {
 type UserService interface {
 	SignUp(ctx context.Context, request dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError)
 	SignIn(ctx context.Context, request *dto.SignInRequest) (*dto.SignInResponse, *errs.AppError)
-	SSOSignIn(ctx context.Context, data []byte) (bool, *errs.AppError)
+	SSOSignIn(ctx context.Context, data string) (*dto.JWTResponse,bool, *errs.AppError)
 	GetUser(ctx context.Context, data any) (*dto.SignInResponse, *errs.AppError)
 	CreateUser(ctx context.Context, request *dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError)
+	ResetPassword(ctx context.Context, request *dto.ResetPasswordRequest) (*dto.GenericResponse, *errs.AppError)
 }
 
 
@@ -98,25 +99,26 @@ func (u *userServiceClass) SignIn(ctx context.Context, request *dto.SignInReques
 	return resp, nil
 }
 
-func (u *userServiceClass) SSOSignIn(ctx context.Context, data []byte) (bool, *errs.AppError) {
-	var reqData domain.JWTCredentials
+func (u *userServiceClass) SSOSignIn(ctx context.Context, data string) (*dto.JWTResponse,bool, *errs.AppError) {
+	var reqData domain.JWTRequest
 
-	err := json.Unmarshal(data, &reqData)
+	err := json.Unmarshal([]byte(data), &reqData)
 	if err != nil {
-		return false, errs.NewValidationError(err.Error())
+		return nil,false, errs.NewValidationError(err.Error())
 	}
 
 	_, appErr := u.valid.ValidateUserName(ctx,  reqData.Username)
 	if err != nil {
-		return false, errs.NewValidationError(appErr.Message)
+		return nil, false, errs.NewValidationError(appErr.Message)
 	}
 
 	appErr = u.valid.ValidatePassword(ctx, reqData.Password, reqData.Username)
 	if err != nil {
-		return false, errs.NewValidationError(appErr.Message)
+		return nil, false, errs.NewValidationError(appErr.Message)
 	}
 
-	return true, nil
+	resp := reqData.ToDTOJwtResponse()
+	return resp, true, nil
 }
 
 func (u *userServiceClass) GetUser(ctx context.Context, data any) (*dto.SignInResponse, *errs.AppError) {
@@ -160,4 +162,38 @@ func(u *userServiceClass) CreateUser(ctx context.Context, request *dto.SignUpReq
 
 	resp := userDetails.ToSignUpDTO()
 	return resp, nil
+}
+
+func (u *userServiceClass) ResetPassword(ctx context.Context, request *dto.ResetPasswordRequest) (*dto.GenericResponse, *errs.AppError) {
+	err := request.RestPasswordValidation()
+	if err != nil {
+		return &dto.GenericResponse{
+				Success: false,
+				Message: err.Message,
+		}, err
+	}
+
+	err = u.valid.ValidatePassword(ctx, request.OldPassword, request.UserName)
+	if err != nil {
+		return &dto.GenericResponse{
+				Success: false,
+				Message: err.Message,
+		},  errs.NewValidationError(err.Message)
+	}
+
+	hashedPassword, err := utility.GenHashAndSaltPassword(request.NewPassword)
+	if stringUtils.IsBlank(hashedPassword) && err != nil {
+		logger.Debug(err.Message)
+		return &dto.GenericResponse{
+				Success: false,
+				Message: err.Message,
+		}, errs.NewValidationError(err.Message)
+	}
+
+	// Send Notification Via kafka or aws SNS
+
+	return &dto.GenericResponse{
+		Success: true,
+		Message: "Password Updated Successfully.",
+	}, nil
 }

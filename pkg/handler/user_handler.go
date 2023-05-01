@@ -41,7 +41,6 @@ func (u *UserHandler) SignUp() gin.HandlerFunc {
 	}
 }
 
-
 func(u *UserHandler) SSOLogIn(auth sso.KeyCloakMiddleware) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		resp := new(dto.SignInRequest)
@@ -65,7 +64,7 @@ func(u *UserHandler) SSOLogIn(auth sso.KeyCloakMiddleware) gin.HandlerFunc {
 
 		}else {
 
-			if val, ok := ctx.Get("userMapKey"); !ok {
+			if value, ok := ctx.Get("userMapKey"); !ok {
 				ctx.JSON(http.StatusExpectationFailed, gin.H{
 					"Success": false,
 					"Message": "Failed To Get Keys",
@@ -73,17 +72,19 @@ func(u *UserHandler) SSOLogIn(auth sso.KeyCloakMiddleware) gin.HandlerFunc {
 				ctx.Abort()
 				return
 			}else{
-				marshalledValue, err := json.Marshal(val)
-				if err != nil {
+
+				mapUserContext := value.(map[string]string)
+				userContextValue, ok := mapUserContext["userCred"]
+				if !ok {
 					ctx.JSON(http.StatusBadGateway, gin.H{
 						"Success": false,
-						"Message": "Failed To un Marshall",
+						"Message": "Failed To Fetch Data.",
 					})
 					ctx.Abort()
 					return
 				}
 
-				isDataValid, errs := u.UserService.SSOSignIn(ctx, marshalledValue)
+				response,isDataValid, errs := u.UserService.SSOSignIn(ctx, userContextValue)
 				if !isDataValid || (errs != nil && errs.Code == http.StatusUnprocessableEntity) {
 					ctx.JSON(http.StatusUnprocessableEntity, gin.H{
 						"Success": false,
@@ -93,7 +94,8 @@ func(u *UserHandler) SSOLogIn(auth sso.KeyCloakMiddleware) gin.HandlerFunc {
 					return
 				}
 
-				_, err = ctx.Writer.Write(marshalledValue)
+				marshalledResp, _ := json.Marshal(response)
+				_, err = ctx.Writer.Write(marshalledResp)
 				if err != nil {
 					return
 				}
@@ -158,6 +160,41 @@ func (u *UserHandler) SignIn() gin.HandlerFunc{
 			} else {
 				ctx.JSON(http.StatusOK, userDetails)
 			}
+		}
+	}
+}
+
+func (u *UserHandler) ResetPassword(auth sso.KeyCloakMiddleware) gin.HandlerFunc{
+	return func(ctx *gin.Context) {
+		var request dto.ResetPasswordRequest
+		err := json.NewDecoder(ctx.Request.Body).Decode(&request)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"Message": err.Error(),
+			})
+			return
+		}else{
+
+			response, err := u.UserService.ResetPassword(ctx, &request)
+			if err != nil {
+				ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+					"Message": response,
+				})
+			}
+
+			//  Need Role To Provide access To Such Method in Key-Cloak.
+			context := auth.ResetPassword(ctx, &request)
+			if context.IsAborted() {
+				context.JSON(http.StatusExpectationFailed, gin.H{
+					"Success": false,
+					"Message": "Password Reset Ramification Failed.",
+				})
+				context.Abort()
+				return
+			}
+
+			ctx.JSON(http.StatusCreated, response)
+			return
 		}
 	}
 }

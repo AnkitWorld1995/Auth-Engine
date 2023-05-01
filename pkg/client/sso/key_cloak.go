@@ -68,7 +68,7 @@ func (auth *KeyCloakMiddleware) extractAccessTokenData(ctx *gin.Context) *gin.Co
 
 
 func(auth *KeyCloakMiddleware) ExtractJWTCred(ctx *gin.Context, req *dto.SignInRequest) *gin.Context {
-	var cred *domain.JWTCredentials
+	var cred *domain.JWTRequest
 
 	jwtCred, err := auth.Keycloak.GoCloak.Login(context.Background(),auth.Keycloak.ClientId, auth.Keycloak.ClientSecret, auth.Keycloak.Realm, req.UserName, req.Password)
 	if err != nil {
@@ -82,7 +82,7 @@ func(auth *KeyCloakMiddleware) ExtractJWTCred(ctx *gin.Context, req *dto.SignInR
 	}
 	log.Println(ctx.Keys)
 
-	cred = &domain.JWTCredentials{
+	cred = &domain.JWTRequest{
 		Username:     req.UserName,
 		Password:     req.Password,
 		AccessToken:  jwtCred.AccessToken,
@@ -90,8 +90,9 @@ func(auth *KeyCloakMiddleware) ExtractJWTCred(ctx *gin.Context, req *dto.SignInR
 		ExpiresIn:    jwtCred.ExpiresIn,
 	}
 
-	userMapKey := make(map[string]any)
-	userMapKey["userCred"] = cred
+	credJson, _ := json.Marshal(cred)
+	userMapKey := make(map[string]string)
+	userMapKey["userCred"] = string(credJson)
 	ctx.Set("userMapKey", userMapKey)
 	return ctx
 }
@@ -138,5 +139,46 @@ func (auth *KeyCloakMiddleware) VerifyJWTToken(ctx *gin.Context) *gin.Context{
 	log.Println("-------------5---------------------")
 	ctx.Next()
 
+	return ctx
+}
+
+func (auth *KeyCloakMiddleware) ResetPassword(ctx *gin.Context, req *dto.ResetPasswordRequest) *gin.Context {
+
+	resp := req.OnDTO()
+	newContext := auth.extractAccessTokenData(ctx)
+	contextMap, ok := newContext.Get("User-Info")
+	if !ok {
+		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
+			"Success": false,
+			"Message": fmt.Sprintf("Context Procession Failed With Data: %s", contextMap),
+		})
+		ctx.Abort()
+		return ctx
+	}
+
+	ctxMapValue := contextMap.(map[string]string)
+	ctxUserValue := ctxMapValue["User-Info"]
+	accessToken := ctxMapValue["User-JWT"]
+
+	var userCloakDetails *domain.UserInfo
+	err := json.Unmarshal([]byte(ctxUserValue), &userCloakDetails)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
+			"Success": false,
+			"Message": fmt.Sprintf("Context Procession Failed With Data: %s", err.Error()),
+		})
+		ctx.Abort()
+		return ctx
+	}
+
+	err = auth.Keycloak.GoCloak.SetPassword(ctx, accessToken, *userCloakDetails.Sub, auth.Keycloak.Realm, resp.Password, true)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
+			"Success": false,
+			"Message": fmt.Sprintf("Context Procession Failed To Set Password: %s", err.Error()),
+		})
+		ctx.Abort()
+		return ctx
+	}
 	return ctx
 }

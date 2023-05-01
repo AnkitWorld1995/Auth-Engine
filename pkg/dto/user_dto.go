@@ -50,6 +50,23 @@ type SignInResponse struct {
 	UpdatedAt 	string	`json:"updated_at"`
 }
 
+type JWTResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresIn    int    `json:"expiresIn"`
+}
+
+type ResetPasswordRequest struct {
+	UserName    string `json:"user_name"`
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
+}
+
+type GenericResponse struct {
+	Success 	bool	`json:"success"`
+	Message 	string	`json:"message"`
+}
+
 
 func (r *SignUpRequest) SignUpValidate() *errs.AppError{
 	_, err := mail.ParseAddress(r.Email)
@@ -106,4 +123,27 @@ func JwtContext(ctx context.Context) (*SignInRequest, bool){
 	//log.Println("All Keys", ctx.Value())
 	ctv, ok := ctx.Value(key{}).(SignInRequest)
 	return &ctv, ok
+}
+
+func(r *ResetPasswordRequest) OnDTO() *SignInRequest {
+	return &SignInRequest{
+		UserName: r.UserName,
+		Password: r.NewPassword,
+	}
+}
+
+func(r *ResetPasswordRequest) RestPasswordValidation() *errs.AppError {
+	if strUtil.IsBlank(strings.TrimSpace(r.UserName)) {
+		return errs.NewValidationError("User Name is empty")
+	}
+
+	if strUtil.IsBlank(strings.TrimSpace(r.OldPassword)) {
+		return errs.NewValidationError("Old Password is empty")
+	}
+
+	if strUtil.IsBlank(strings.TrimSpace(r.NewPassword)) {
+		return errs.NewValidationError("New Password is empty")
+	}
+
+	return nil
 }
