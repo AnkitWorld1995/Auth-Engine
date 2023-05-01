@@ -182,7 +182,11 @@ func (u *UserHandler) ResetPassword(auth sso.KeyCloakMiddleware) gin.HandlerFunc
 				})
 			}
 
-			//  Need Role To Provide access To Such Method in Key-Cloak.
+			/*
+				Note: Need Role To Provide access To Such Method in Key-Cloak.
+				1. auth.ResetPassword() Can be Omitted if the Password in Key-Cloak
+			       server is already reset via Client.
+			*/
 			context := auth.ResetPassword(ctx, &request)
 			if context.IsAborted() {
 				context.JSON(http.StatusExpectationFailed, gin.H{

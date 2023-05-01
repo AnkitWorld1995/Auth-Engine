@@ -4,34 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/Nerzal/gocloak/v7"
 	"github.com/agrison/go-commons-lang/stringUtils"
 	"github.com/chsys/userauthenticationengine/pkg/domain"
 	"github.com/chsys/userauthenticationengine/pkg/dto"
+	"github.com/chsys/userauthenticationengine/pkg/lib/constants"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 	"strings"
 )
-
-type KeyCloakMiddleware struct {
-	Keycloak *KeyCloak
-}
-
-
-type KeyCloak struct {
-	GoCloak		 gocloak.GoCloak
-	ClientId     string
-	ClientSecret string
-	Realm        string
-}
-
-
-func KeyCloakInit(keycloak *KeyCloak) *KeyCloakMiddleware {
-	return &KeyCloakMiddleware{Keycloak: keycloak}
-}
-
-
 
 func (auth *KeyCloakMiddleware) extractBearerToken(token string) string {
 	return strings.Replace(token, "Bearer ", "", 1)
@@ -60,9 +41,9 @@ func (auth *KeyCloakMiddleware) extractAccessTokenData(ctx *gin.Context) *gin.Co
 
 	infos, _ := json.Marshal(info)
 	userDetails := make(map[string]string)
-	userDetails["User-Info"] = string(infos)
-	userDetails["User-JWT"]  = token
-	ctx.Set("User-Info", userDetails)
+	userDetails[constants.UserContextDetails] = string(infos)
+	userDetails[constants.UserContextJwtDetails]  = token
+	ctx.Set(constants.UserContextDetails, userDetails)
 	return ctx
 }
 
@@ -80,7 +61,6 @@ func(auth *KeyCloakMiddleware) ExtractJWTCred(ctx *gin.Context, req *dto.SignInR
 		ctx.Abort()
 		return &gin.Context{}
 	}
-	log.Println(ctx.Keys)
 
 	cred = &domain.JWTRequest{
 		Username:     req.UserName,
@@ -92,14 +72,14 @@ func(auth *KeyCloakMiddleware) ExtractJWTCred(ctx *gin.Context, req *dto.SignInR
 
 	credJson, _ := json.Marshal(cred)
 	userMapKey := make(map[string]string)
-	userMapKey["userCred"] = string(credJson)
-	ctx.Set("userMapKey", userMapKey)
+	userMapKey[constants.UserCredentials] = string(credJson)
+	ctx.Set(constants.UserMapKey, userMapKey)
 	return ctx
 }
 
 func (auth *KeyCloakMiddleware) VerifyJWTToken(ctx *gin.Context) *gin.Context{
 	newContext := auth.extractAccessTokenData(ctx)
-	contextMap, ok := newContext.Get("User-Info")
+	contextMap, ok := newContext.Get(constants.UserContextDetails)
 	if !ok {
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
 			"Success": false,
@@ -110,11 +90,9 @@ func (auth *KeyCloakMiddleware) VerifyJWTToken(ctx *gin.Context) *gin.Context{
 	}
 
 	ctxMapValue := contextMap.(map[string]string)
-	token := ctxMapValue["User-JWT"]
+	token := ctxMapValue[constants.UserContextJwtDetails]
 
-	log.Println("-------------2---------------------")
-
-	//// call Keycloak API to verify the access token
+	// call Keycloak API to verify the access token
 	result, err := auth.Keycloak.GoCloak.RetrospectToken(context.Background(), token, auth.Keycloak.ClientId, auth.Keycloak.ClientSecret, auth.Keycloak.Realm)
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
@@ -124,8 +102,6 @@ func (auth *KeyCloakMiddleware) VerifyJWTToken(ctx *gin.Context) *gin.Context{
 		ctx.Abort()
 		return &gin.Context{}
 	}
-	log.Println("-------------3---------------------")
-
 
 	// check if the token isn't expired and valid
 	if !*result.Active {
@@ -135,10 +111,7 @@ func (auth *KeyCloakMiddleware) VerifyJWTToken(ctx *gin.Context) *gin.Context{
 		})
 		return &gin.Context{}
 	}
-
-	log.Println("-------------5---------------------")
 	ctx.Next()
-
 	return ctx
 }
 
@@ -157,8 +130,8 @@ func (auth *KeyCloakMiddleware) ResetPassword(ctx *gin.Context, req *dto.ResetPa
 	}
 
 	ctxMapValue := contextMap.(map[string]string)
-	ctxUserValue := ctxMapValue["User-Info"]
-	accessToken := ctxMapValue["User-JWT"]
+	ctxUserValue := ctxMapValue[constants.UserContextDetails]
+	accessToken := ctxMapValue[constants.UserContextJwtDetails]
 
 	var userCloakDetails *domain.UserInfo
 	err := json.Unmarshal([]byte(ctxUserValue), &userCloakDetails)
@@ -171,7 +144,7 @@ func (auth *KeyCloakMiddleware) ResetPassword(ctx *gin.Context, req *dto.ResetPa
 		return ctx
 	}
 
-	err = auth.Keycloak.GoCloak.SetPassword(ctx, accessToken, *userCloakDetails.Sub, auth.Keycloak.Realm, resp.Password, true)
+	err = auth.Keycloak.GoCloak.SetPassword(ctx, accessToken, *userCloakDetails.Sub, auth.Keycloak.Realm, resp.Password, false)
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
 			"Success": false,
