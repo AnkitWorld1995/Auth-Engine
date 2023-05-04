@@ -1,6 +1,11 @@
 package domain
 
-import "github.com/chsys/userauthenticationengine/pkg/dto"
+import (
+	"context"
+	"github.com/chsys/userauthenticationengine/pkg/dto"
+	"github.com/chsys/userauthenticationengine/pkg/lib/constants"
+	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
+)
 
 type JWTRequest struct {
 	Username 	string	`json:"user_name"`
@@ -55,4 +60,11 @@ func (r *JWTRequest) ToDTOJwtResponse() *dto.JWTResponse {
 		RefreshToken: r.RefreshToken,
 		ExpiresIn:    r.ExpiresIn,
 	}
+}
+
+// GetUserDetail Must be Refactored To integrate Properly with functions.
+func GetUserDetail(ctx context.Context) (*JWTRequest,*errs.AppError){
+	value := ctx.Value(constants.UserMapKey)
+	mapUserContext := value.(JWTRequest)
+	return &mapUserContext, nil
 }
