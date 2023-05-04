@@ -17,7 +17,7 @@ func GinContextToContextMiddleware() gin.HandlerFunc {
 		//		"Message": "Bad Request",
 		//	})
 		//}
-		//c.Set("Username", resp.UserName)
+		//c.Set("Username", resp.Email)
 		//c.Set("Password", resp.Password)
 		c.Next()
 	}

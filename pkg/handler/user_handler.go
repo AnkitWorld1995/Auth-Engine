@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chsys/userauthenticationengine/pkg/client/sso"
 	"github.com/chsys/userauthenticationengine/pkg/dto"
+	"github.com/chsys/userauthenticationengine/pkg/lib/constants"
 	"github.com/chsys/userauthenticationengine/pkg/services"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -52,7 +53,7 @@ func(u *UserHandler) SSOLogIn(auth sso.KeyCloakMiddleware) gin.HandlerFunc {
 			return
 		}
 
-		ctx = auth.ExtractJWTCred( ctx, resp)
+		ctx = auth.GetUserWithJWTCred(ctx, resp)
 		if ctx.IsAborted(){
 
 			ctx.JSON(http.StatusExpectationFailed, gin.H{
@@ -64,7 +65,7 @@ func(u *UserHandler) SSOLogIn(auth sso.KeyCloakMiddleware) gin.HandlerFunc {
 
 		}else {
 
-			if value, ok := ctx.Get("userMapKey"); !ok {
+			if value, ok := ctx.Get(constants.UserMapKey); !ok {
 				ctx.JSON(http.StatusExpectationFailed, gin.H{
 					"Success": false,
 					"Message": "Failed To Get Keys",
@@ -180,6 +181,7 @@ func (u *UserHandler) ResetPassword(auth sso.KeyCloakMiddleware) gin.HandlerFunc
 				ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 					"Message": response,
 				})
+				return
 			}
 
 			/*

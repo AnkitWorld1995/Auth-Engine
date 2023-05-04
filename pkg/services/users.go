@@ -45,29 +45,20 @@ func (u *userServiceClass) SignUp(ctx context.Context, request dto.SignUpRequest
 	}
 
 	emailExist, err := u.valid.ValidateEmail(ctx, strings.TrimSpace(request.Email))
-	if emailExist || (err != nil  && err.Code != http.StatusInternalServerError) {
-		return nil, errs.NewValidationError("user already exist")
+	if emailExist || (err != nil  && err.Code != http.StatusNotFound) {
+		return nil, errs.NewValidationError("Email already exist")
 	}
 
 	usernameExist, err := u.valid.ValidateUserName(ctx, request.UserName)
-	if usernameExist || (err != nil  && err.Code != http.StatusInternalServerError) {
+	if usernameExist || (err != nil  && err.Code != http.StatusNotFound) {
 		return nil, errs.NewValidationError("user already exist")
 	}
 
-	hashedPassword, err := utility.GenHashAndSaltPassword(request.Password)
-	if stringUtils.IsBlank(hashedPassword) && err != nil {
-		logger.Debug(err.Message)
-		return nil, errs.NewValidationError(err.Message)
-	}
-
-	newUser := domain.CreateNewUser(request.UserName, request.FirstName, request.LastName, hashedPassword, utility.ParseMail(request.Email), request.UserType ,request.Address ,request.PhoneNumber, false )
-	userDetails, err := u.repo.SaveUser(ctx, newUser)
+	resp, err := u.CreateUser(ctx, &request)
 	if err != nil {
-		logger.Debug(err.Message)
-		return nil, errs.NewUnexpectedError(err.Message)
+		return nil, err
 	}
 
-	resp := userDetails.ToSignUpDTO()
 	return resp, nil
 }
 
@@ -85,7 +76,7 @@ func (u *userServiceClass) SignIn(ctx context.Context, request *dto.SignInReques
 		return nil, err
 	}
 
-	err = u.valid.ValidatePassword(ctx, request.Password, request.UserName)
+	_, err = u.valid.ValidatePassword(ctx, request.Password, request.UserName)
 	if err != nil {
 		return nil, err
 	}
@@ -108,12 +99,12 @@ func (u *userServiceClass) SSOSignIn(ctx context.Context, data string) (*dto.JWT
 	}
 
 	_, appErr := u.valid.ValidateUserName(ctx,  reqData.Username)
-	if err != nil {
+	if appErr != nil {
 		return nil, false, errs.NewValidationError(appErr.Message)
 	}
 
-	appErr = u.valid.ValidatePassword(ctx, reqData.Password, reqData.Username)
-	if err != nil {
+	_, appErr = u.valid.ValidatePassword(ctx, reqData.Password, reqData.Username)
+	if appErr != nil {
 		return nil, false, errs.NewValidationError(appErr.Message)
 	}
 
@@ -142,10 +133,6 @@ func (u *userServiceClass) GetUser(ctx context.Context, data any) (*dto.SignInRe
 }
 
 func(u *userServiceClass) CreateUser(ctx context.Context, request *dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError) {
-	err := request.SignUpValidate()
-	if err != nil {
-		return nil, err
-	}
 
 	hashedPassword, err := utility.GenHashAndSaltPassword(request.Password)
 	if stringUtils.IsBlank(hashedPassword) && err != nil {
@@ -173,12 +160,17 @@ func (u *userServiceClass) ResetPassword(ctx context.Context, request *dto.Reset
 		}, err
 	}
 
-	err = u.valid.ValidatePassword(ctx, request.OldPassword, request.UserName)
-	if err != nil {
+	samePassword, err := u.valid.ValidatePassword(ctx, request.NewPassword, request.Email)
+	if err != nil && err.Code != http.StatusUnprocessableEntity {
 		return &dto.GenericResponse{
 				Success: false,
 				Message: err.Message,
 		},  errs.NewValidationError(err.Message)
+	}else if samePassword && err == nil{
+		return &dto.GenericResponse{
+			Success: false,
+			Message: "Sorry! Cannot Use Same old Password.",
+		},  errs.NewValidationError("Sorry! Cannot Use Same old Password.")
 	}
 
 	hashedPassword, err := utility.GenHashAndSaltPassword(request.NewPassword)
@@ -189,8 +181,13 @@ func (u *userServiceClass) ResetPassword(ctx context.Context, request *dto.Reset
 				Message: err.Message,
 		}, errs.NewValidationError(err.Message)
 	}
-
+	// Update the Same In Database.
 	// Send Notification Via kafka or aws SNS
+
+	resp, err := u.repo.UpdatePassword(ctx, request.Email, hashedPassword)
+	if err != nil {
+		return resp, err
+	}
 
 	return &dto.GenericResponse{
 		Success: true,

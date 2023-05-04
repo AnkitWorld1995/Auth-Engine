@@ -1,12 +1,14 @@
 package utility
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"github.com/chsys/userauthenticationengine/pkg/lib/constants"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
+	"io"
 	"log"
 	"net/http"
 	"net/mail"
@@ -83,15 +85,6 @@ func PasswordValidator(password string, isSignIn bool) *errs.AppError {
 		}
 	}
 
-	/*
-		1. If Sign-In is True:
-			1.1. Compare The Password with Hashed.
-	*/
-
-	if isSignIn {
-		// Compare Password
-	}
-
 	if hasMinLen && hasUpper && hasLower && hasNumber && hasSpecial {
 		return nil
 	} else {
@@ -124,4 +117,18 @@ func MarshallContext(value any) ([]byte,*gin.Context){
 		return nil,  ctx
 	}
 	return value.([]byte), ctx
+}
+
+var table = [...]byte{'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'}
+
+func GenerateOTP(max int) (string, error) {
+	b := make([]byte, max)
+	n, err := io.ReadAtLeast(rand.Reader, b, max)
+	if n != max {
+		return "", err
+	}
+	for i := 0; i < len(b); i++ {
+		b[i] = table[int(b[i])%len(table)]
+	}
+	return string(b), nil
 }
