@@ -4,6 +4,7 @@ import "github.com/chsys/userauthenticationengine/pkg/dto"
 
 type JWTRequest struct {
 	Username 	string	`json:"user_name"`
+	Email 		string	`json:"email"`
 	Password 	string	`json:"password"`
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`

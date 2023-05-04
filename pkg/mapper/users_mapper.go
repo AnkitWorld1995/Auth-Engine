@@ -12,7 +12,7 @@ type RequestValidation struct {
 }
 
 type RequestValidationInterface interface {
-	ValidatePassword(ctx context.Context,password, condition string) *errs.AppError
+	ValidatePassword(ctx context.Context,password, condition string) (bool,*errs.AppError)
 	ValidateUserName(ctx context.Context, userName string) (bool, *errs.AppError)
 	ValidateEmail(ctx context.Context, email string) (bool, *errs.AppError)
 }
@@ -25,15 +25,16 @@ func (r *RequestValidation) ValidateEmail(ctx context.Context, email string) (bo
 	return  r.Repo.FindByEmail(ctx, utility.ParseMail(email))
 }
 
-func (r *RequestValidation) ValidatePassword(ctx context.Context,password, condition string) *errs.AppError  {
+func (r *RequestValidation) ValidatePassword(ctx context.Context,password, condition string) (bool,*errs.AppError) {
 	orgPassword, err := r.Repo.GetPassword(ctx, &condition)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	isSame := utility.ComparePassword(orgPassword, []byte(password))
 	if !isSame {
-		return errs.NewValidationError("Password Incorrect")
+		return false, errs.NewValidationError("Password Doesn't Match")
 	}
-	return nil
+
+	return true, nil
 }

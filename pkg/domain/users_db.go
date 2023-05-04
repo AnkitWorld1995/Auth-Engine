@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/chsys/userauthenticationengine/pkg/dto"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"github.com/chsys/userauthenticationengine/pkg/lib/logger"
 	"github.com/jmoiron/sqlx"
@@ -34,6 +35,7 @@ type UserRepository interface {
 	SaveUser(ctx context.Context, user *Users) (*UserResponse, *errs.AppError)
 	GetPassword(ctx context.Context, cond *string) (string, *errs.AppError)
 	GetUser(ctx context.Context, cond *string) (*Users, *errs.AppError)
+	UpdatePassword(ctx context.Context, email, password string) (*dto.GenericResponse,*errs.AppError)
 }
 
 func (r *UserRepoClass) FindByEmail(ctx context.Context, email string) (bool, *errs.AppError) {
@@ -41,7 +43,7 @@ func (r *UserRepoClass) FindByEmail(ctx context.Context, email string) (bool, *e
 	query := fmt.Sprintf(`SELECT 1 FROM %s."users" WHERE "email" = $1`, r.dbSchema)
 	err := r.db.QueryRowContext(ctx, query, email).Scan(&emailExist)
 	if err != nil {
-		return false, errs.NewUnexpectedError("Email Not Found")
+		return false, errs.NewNotFoundError("Email Not Found")
 	}
 	return emailExist.Bool, nil
 }
@@ -51,9 +53,42 @@ func (r *UserRepoClass) FindByUserName(ctx context.Context, userName string) (bo
 	query := fmt.Sprintf(`SELECT 1 FROM %s."users" WHERE "user_name" = $1`, r.dbSchema)
 	err := r.db.QueryRowContext(ctx, query, userName).Scan(&userExist)
 	if err != nil {
-		return false, errs.NewUnexpectedError("User Name Not Found")
+		return false, errs.NewNotFoundError("User Name Not Found")
 	}
 	return userExist.Bool, nil
+}
+
+func (r *UserRepoClass) UpdatePassword(ctx context.Context, email, password string) (*dto.GenericResponse,*errs.AppError) {
+
+	sqlQuery := fmt.Sprintf(`UPDATE 	%s.users 
+									set
+										"password" = ?
+									where
+										email = ?
+									`, r.dbSchema)
+
+	sqlQuery = sqlx.Rebind(sqlx.DOLLAR, sqlQuery)
+	rows, err := r.db.ExecContext(ctx, sqlQuery, password, email)
+	if err != nil {
+		logger.Error( fmt.Sprintf("SQL: Update Password ERROR\t %s",err.Error()))
+		return &dto.GenericResponse{
+			Success: false,
+			Message: fmt.Sprintf("SQL: Update Password ERROR\t %s",err.Error()),
+		},errs.NewUnexpectedError(err.Error())
+	}
+
+	affectedRows, _ := rows.RowsAffected()
+	if affectedRows < 1 {
+		return &dto.GenericResponse{
+			Success: false,
+			Message: "Password Not Updated In DB.",
+		},errs.NewUnexpectedError("Password Not Updated In DB.")
+	}else {
+		return &dto.GenericResponse{
+			Success: true,
+			Message: "Password Updated Successfully In DB.",
+		},nil
+	}
 }
 
 func (r *UserRepoClass) SaveUser(ctx context.Context, user *Users) (*UserResponse, *errs.AppError) {

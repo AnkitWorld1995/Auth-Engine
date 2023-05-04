@@ -27,6 +27,7 @@ type SignUpRequest struct {
 
 type SignInRequest struct {
 	UserName	string	`json:"user_name"`
+	Email 		string 	`json:"email"`
 	Password	string  `json:"password"`
 }
 
@@ -57,7 +58,7 @@ type JWTResponse struct {
 }
 
 type ResetPasswordRequest struct {
-	UserName    string `json:"user_name"`
+	Email       string `json:"email"`
 	OldPassword string `json:"old_password"`
 	NewPassword string `json:"new_password"`
 }
@@ -127,14 +128,14 @@ func JwtContext(ctx context.Context) (*SignInRequest, bool){
 
 func(r *ResetPasswordRequest) OnDTO() *SignInRequest {
 	return &SignInRequest{
-		UserName: r.UserName,
+		UserName: r.Email,
 		Password: r.NewPassword,
 	}
 }
 
 func(r *ResetPasswordRequest) RestPasswordValidation() *errs.AppError {
-	if strUtil.IsBlank(strings.TrimSpace(r.UserName)) {
-		return errs.NewValidationError("User Name is empty")
+	if strUtil.IsBlank(strings.TrimSpace(r.Email)) {
+		return errs.NewValidationError("Email is empty")
 	}
 
 	if strUtil.IsBlank(strings.TrimSpace(r.OldPassword)) {

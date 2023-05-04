@@ -18,7 +18,7 @@ func (auth *KeyCloakMiddleware) extractBearerToken(token string) string {
 	return strings.Replace(token, "Bearer ", "", 1)
 }
 
-func (auth *KeyCloakMiddleware) extractAccessTokenData(ctx *gin.Context) *gin.Context {
+func (auth *KeyCloakMiddleware) ExtractAccessTokenData(ctx *gin.Context) *gin.Context {
 
 	tokenHeader := ctx.GetHeader("Authorization")
 	if stringUtils.IsBlank(tokenHeader) {
@@ -48,7 +48,7 @@ func (auth *KeyCloakMiddleware) extractAccessTokenData(ctx *gin.Context) *gin.Co
 }
 
 
-func(auth *KeyCloakMiddleware) ExtractJWTCred(ctx *gin.Context, req *dto.SignInRequest) *gin.Context {
+func(auth *KeyCloakMiddleware) GetUserWithJWTCred(ctx *gin.Context, req *dto.SignInRequest) *gin.Context {
 	var cred *domain.JWTRequest
 
 	jwtCred, err := auth.Keycloak.GoCloak.Login(context.Background(),auth.Keycloak.ClientId, auth.Keycloak.ClientSecret, auth.Keycloak.Realm, req.UserName, req.Password)
@@ -64,6 +64,7 @@ func(auth *KeyCloakMiddleware) ExtractJWTCred(ctx *gin.Context, req *dto.SignInR
 
 	cred = &domain.JWTRequest{
 		Username:     req.UserName,
+		Email: 		  req.Email,
 		Password:     req.Password,
 		AccessToken:  jwtCred.AccessToken,
 		RefreshToken: jwtCred.RefreshToken,
@@ -78,7 +79,7 @@ func(auth *KeyCloakMiddleware) ExtractJWTCred(ctx *gin.Context, req *dto.SignInR
 }
 
 func (auth *KeyCloakMiddleware) VerifyJWTToken(ctx *gin.Context) *gin.Context{
-	newContext := auth.extractAccessTokenData(ctx)
+	newContext := auth.ExtractAccessTokenData(ctx)
 	contextMap, ok := newContext.Get(constants.UserContextDetails)
 	if !ok {
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
@@ -118,7 +119,7 @@ func (auth *KeyCloakMiddleware) VerifyJWTToken(ctx *gin.Context) *gin.Context{
 func (auth *KeyCloakMiddleware) ResetPassword(ctx *gin.Context, req *dto.ResetPasswordRequest) *gin.Context {
 
 	resp := req.OnDTO()
-	newContext := auth.extractAccessTokenData(ctx)
+	newContext := auth.ExtractAccessTokenData(ctx)
 	contextMap, ok := newContext.Get("User-Info")
 	if !ok {
 		ctx.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
@@ -129,9 +130,9 @@ func (auth *KeyCloakMiddleware) ResetPassword(ctx *gin.Context, req *dto.ResetPa
 		return ctx
 	}
 
-	ctxMapValue := contextMap.(map[string]string)
+	ctxMapValue  := contextMap.(map[string]string)
 	ctxUserValue := ctxMapValue[constants.UserContextDetails]
-	accessToken := ctxMapValue[constants.UserContextJwtDetails]
+	accessToken  := ctxMapValue[constants.UserContextJwtDetails]
 
 	var userCloakDetails *domain.UserInfo
 	err := json.Unmarshal([]byte(ctxUserValue), &userCloakDetails)

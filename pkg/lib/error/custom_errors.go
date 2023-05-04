@@ -11,12 +11,26 @@ type AppError struct {
 	Note: AppErrorOption & ErrMessage Follows Option Design Pattern.
 	Need To Implement In Later Stages Of Development.
 */
-type AppErrorOption func(*AppError)
 
-func ErrMessage(msg string) AppErrorOption {
-	return func(appError *AppError) {
-		appError.Message = msg
+type AppErrorOptionList struct {
+	ErrList []AppError
+}
+
+type AppErrorOption func(AppError) *AppErrorOptionList
+
+func NewErrMessageList(err AppError) AppErrorOption {
+	return func(appError AppError) *AppErrorOptionList {
+		errLst := new(AppErrorOptionList)
+		errLst.AddErr(err)
+		return &AppErrorOptionList{
+			ErrList: errLst.ErrList,
+		}
 	}
+}
+
+
+func(e *AppErrorOptionList) AddErr(err AppError) {
+	e.ErrList = append(e.ErrList, err)
 }
 
 func (e AppError) AsMessage() *AppError {
