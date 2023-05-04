@@ -49,7 +49,7 @@ func (auth *KeyCloakMiddleware) ExtractAccessTokenData(ctx *gin.Context) *gin.Co
 
 
 func(auth *KeyCloakMiddleware) GetUserWithJWTCred(ctx *gin.Context, req *dto.SignInRequest) *gin.Context {
-	var cred *domain.JWTRequest
+	var cred domain.JWTRequest
 
 	jwtCred, err := auth.Keycloak.GoCloak.Login(context.Background(),auth.Keycloak.ClientId, auth.Keycloak.ClientSecret, auth.Keycloak.Realm, req.UserName, req.Password)
 	if err != nil {
@@ -62,7 +62,7 @@ func(auth *KeyCloakMiddleware) GetUserWithJWTCred(ctx *gin.Context, req *dto.Sig
 		return &gin.Context{}
 	}
 
-	cred = &domain.JWTRequest{
+	cred = domain.JWTRequest{
 		Username:     req.UserName,
 		Email: 		  req.Email,
 		Password:     req.Password,
@@ -71,10 +71,7 @@ func(auth *KeyCloakMiddleware) GetUserWithJWTCred(ctx *gin.Context, req *dto.Sig
 		ExpiresIn:    jwtCred.ExpiresIn,
 	}
 
-	credJson, _ := json.Marshal(cred)
-	userMapKey := make(map[string]string)
-	userMapKey[constants.UserCredentials] = string(credJson)
-	ctx.Set(constants.UserMapKey, userMapKey)
+	ctx.Set(constants.UserMapKey, cred)
 	return ctx
 }
 

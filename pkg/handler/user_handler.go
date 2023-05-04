@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/chsys/userauthenticationengine/pkg/client/sso"
 	"github.com/chsys/userauthenticationengine/pkg/dto"
-	"github.com/chsys/userauthenticationengine/pkg/lib/constants"
+	_ "github.com/chsys/userauthenticationengine/pkg/lib/constants"
 	"github.com/chsys/userauthenticationengine/pkg/services"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -64,42 +64,20 @@ func(u *UserHandler) SSOLogIn(auth sso.KeyCloakMiddleware) gin.HandlerFunc {
 			return
 
 		}else {
-
-			if value, ok := ctx.Get(constants.UserMapKey); !ok {
-				ctx.JSON(http.StatusExpectationFailed, gin.H{
+			response,isDataValid, errs := u.UserService.SSOSignIn(ctx)
+			if !isDataValid || (errs != nil && errs.Code == http.StatusUnprocessableEntity) {
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{
 					"Success": false,
-					"Message": "Failed To Get Keys",
+					"Message": fmt.Sprintf("Invalid Request %s", errs.Message),
 				})
 				ctx.Abort()
 				return
-			}else{
+			}
 
-				mapUserContext := value.(map[string]string)
-				userContextValue, ok := mapUserContext["userCred"]
-				if !ok {
-					ctx.JSON(http.StatusBadGateway, gin.H{
-						"Success": false,
-						"Message": "Failed To Fetch Data.",
-					})
-					ctx.Abort()
-					return
-				}
-
-				response,isDataValid, errs := u.UserService.SSOSignIn(ctx, userContextValue)
-				if !isDataValid || (errs != nil && errs.Code == http.StatusUnprocessableEntity) {
-					ctx.JSON(http.StatusUnprocessableEntity, gin.H{
-						"Success": false,
-						"Message": fmt.Sprintf("Invalid Request %s", errs.Message),
-					})
-					ctx.Abort()
-					return
-				}
-
-				marshalledResp, _ := json.Marshal(response)
-				_, err = ctx.Writer.Write(marshalledResp)
-				if err != nil {
-					return
-				}
+			marshalledResp, _ := json.Marshal(response)
+			_, appErr := ctx.Writer.Write(marshalledResp)
+			if appErr != nil {
+				return
 			}
 		}
 	}

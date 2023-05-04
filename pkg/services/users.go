@@ -30,7 +30,7 @@ func NewUserServiceClass(repo domain.UserRepository) *userServiceClass {
 type UserService interface {
 	SignUp(ctx context.Context, request dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError)
 	SignIn(ctx context.Context, request *dto.SignInRequest) (*dto.SignInResponse, *errs.AppError)
-	SSOSignIn(ctx context.Context, data string) (*dto.JWTResponse,bool, *errs.AppError)
+	SSOSignIn(ctx context.Context) (*dto.JWTResponse,bool, *errs.AppError)
 	GetUser(ctx context.Context, data any) (*dto.SignInResponse, *errs.AppError)
 	CreateUser(ctx context.Context, request *dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError)
 	ResetPassword(ctx context.Context, request *dto.ResetPasswordRequest) (*dto.GenericResponse, *errs.AppError)
@@ -90,15 +90,14 @@ func (u *userServiceClass) SignIn(ctx context.Context, request *dto.SignInReques
 	return resp, nil
 }
 
-func (u *userServiceClass) SSOSignIn(ctx context.Context, data string) (*dto.JWTResponse,bool, *errs.AppError) {
-	var reqData domain.JWTRequest
+func (u *userServiceClass) SSOSignIn(ctx context.Context) (*dto.JWTResponse,bool, *errs.AppError) {
 
-	err := json.Unmarshal([]byte(data), &reqData)
-	if err != nil {
-		return nil,false, errs.NewValidationError(err.Error())
+	reqData, appErr := domain.GetUserDetail(ctx)
+	if appErr !=  nil {
+		return nil, false, appErr
 	}
 
-	_, appErr := u.valid.ValidateUserName(ctx,  reqData.Username)
+	_, appErr = u.valid.ValidateUserName(ctx,  reqData.Username)
 	if appErr != nil {
 		return nil, false, errs.NewValidationError(appErr.Message)
 	}
