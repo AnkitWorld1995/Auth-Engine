@@ -62,11 +62,11 @@ func StartApp(config *config.AppConfig) {
 	pingHandler := handler.PingHandler{}
 	router.Handle(http.MethodGet, "/ping", pingHandler.Ping())
 
-	userHandler  := handler.UserHandler{UserService: services.NewUserServiceClass(domain.NewUserRepoClass(dbClient, mongoClient, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection))}
+	userHandler  := handler.UserHandler{UserService: services.NewUserServiceClass(domain.NewUserRepoClass(dbClient, mongoClient, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection), keyCloakMiddleware)}
 	router.Handle(http.MethodPost, "/sign-up", userHandler.SignUp())
-	//router.Handle(http.MethodGet,  "/sign-in", userHandler.SignIn())
-	router.Handle(http.MethodGet, "/sso-sign-in", userHandler.SSOLogIn(keyCloakMiddleware))
-	router.Handle(http.MethodGet, "/get-user", userHandler.GetUser(keyCloakMiddleware))
+	router.Handle(http.MethodGet,  "/sign-in", userHandler.SignIn())
+	router.Handle(http.MethodGet, "/sso-sign-in", userHandler.SSOLogIn())
+	router.Handle(http.MethodGet, "/get-user", userHandler.GetUserById())
 	router.Handle(http.MethodPost, "/reset-password", userHandler.ResetPassword(keyCloakMiddleware))
 	/*
 		1. Register The Router a Method router.GET With Our Request Handler Function.

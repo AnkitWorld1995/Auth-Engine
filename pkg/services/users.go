@@ -2,14 +2,15 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/agrison/go-commons-lang/stringUtils"
+	"github.com/chsys/userauthenticationengine/pkg/client/sso"
 	"github.com/chsys/userauthenticationengine/pkg/domain"
 	"github.com/chsys/userauthenticationengine/pkg/dto"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"github.com/chsys/userauthenticationengine/pkg/lib/logger"
 	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
 	"github.com/chsys/userauthenticationengine/pkg/mapper"
+	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 	"strings"
@@ -18,20 +19,23 @@ import (
 type userServiceClass struct {
 	repo  domain.UserRepository
 	valid mapper.RequestValidationInterface
+	keyCloak sso.KeyCloakMiddleware
 }
 
 
-func NewUserServiceClass(repo domain.UserRepository) *userServiceClass {
+func NewUserServiceClass(repo domain.UserRepository, keyCloakClient sso.KeyCloakMiddleware) *userServiceClass {
 	return &userServiceClass{repo: repo, valid: &mapper.RequestValidation{
 		Repo: repo,
-	}}
+	},
+	keyCloak: keyCloakClient,
+	}
 }
 
 type UserService interface {
 	SignUp(ctx context.Context, request dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError)
 	SignIn(ctx context.Context, request *dto.SignInRequest) (*dto.SignInResponse, *errs.AppError)
-	SSOSignIn(ctx context.Context) (*dto.JWTResponse,bool, *errs.AppError)
-	GetUser(ctx context.Context, data any) (*dto.SignInResponse, *errs.AppError)
+	SSOSignIn(ctx *gin.Context, request dto.SSOSignInRequest) (*dto.SSOSignInResponse, *errs.AppError)
+	GetUserById(ctx *gin.Context, request dto.GetUserByIdRequest) (*dto.SignInResponse, *errs.AppError)
 	CreateUser(ctx context.Context, request *dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError)
 	ResetPassword(ctx context.Context, request *dto.ResetPasswordRequest) (*dto.GenericResponse, *errs.AppError)
 }
@@ -81,7 +85,7 @@ func (u *userServiceClass) SignIn(ctx context.Context, request *dto.SignInReques
 		return nil, err
 	}
 
-	userDetails, err :=  u.repo.GetUser(ctx, &request.UserName)
+	userDetails, err :=  u.repo.GetUser(ctx, nil ,&request.UserName, &request.Email)
 	if err != nil {
 		logger.Debug(err.Message)
 		return nil, errs.NewUnexpectedError(err.Message)
@@ -90,43 +94,85 @@ func (u *userServiceClass) SignIn(ctx context.Context, request *dto.SignInReques
 	return resp, nil
 }
 
-func (u *userServiceClass) SSOSignIn(ctx context.Context) (*dto.JWTResponse,bool, *errs.AppError) {
-
-	reqData, appErr := domain.GetUserDetail(ctx)
-	if appErr !=  nil {
-		return nil, false, appErr
-	}
-
-	_, appErr = u.valid.ValidateUserName(ctx,  reqData.Username)
+func (u *userServiceClass) SSOSignIn(ctx *gin.Context, request dto.SSOSignInRequest) (*dto.SSOSignInResponse, *errs.AppError) {
+	appErr := request.SSOSignInValidation()
 	if appErr != nil {
-		return nil, false, errs.NewValidationError(appErr.Message)
+		return nil,appErr
 	}
 
-	_, appErr = u.valid.ValidatePassword(ctx, reqData.Password, reqData.Username)
+	var (
+		respData domain.JWT
+	)
+
+
+	Valid , appErr := u.keyCloak.VerifyJWTToken(ctx, request.AuthToken)
+	if appErr != nil || !Valid {
+		log.Println("Service: GetUserById API ERROR", appErr)
+		return nil, appErr
+	}
+
+	claims, appErr := u.keyCloak.GetClaims(ctx, request.AuthToken)
+	if appErr != nil  {
+		log.Println("Service: GetUserById API ERROR", appErr)
+		return nil, appErr
+	}
+
+	respData.GetUserClaims(*claims)
+
+	roleSize := len(respData.RealmAccess.Roles)
+	for roleIdx, role := range respData.RealmAccess.Roles {
+		if roleIdx <= roleSize && role == "admin-role" {
+			break
+		}else if roleIdx < roleSize && role != "admin-role" {
+			continue
+		}else {
+			return nil, errs.NewForbiddenRequest("Un-Authorized access. User is not Admin.")
+		}
+	}
+
+	_, appErr = u.valid.ValidateUserName(ctx, respData.PreferredUsername)
 	if appErr != nil {
-		return nil, false, errs.NewValidationError(appErr.Message)
+		return nil,errs.NewValidationError(appErr.Message)
 	}
 
-	resp := reqData.ToDTOJwtResponse()
-	return resp, true, nil
+	_, appErr = u.valid.ValidateEmail(ctx, respData.Email)
+	if appErr != nil {
+		return nil, errs.NewValidationError(appErr.Message)
+	}
+
+	samePassword, appErr := u.valid.ValidatePassword(ctx, request.Password, respData.Email)
+	if !samePassword || appErr != nil {
+		return nil, errs.NewValidationError("Sorry! Invalid Password.")
+	}
+
+	tokenDetails, appErr := u.keyCloak.GetToken(ctx, respData, request.Password)
+	if appErr != nil {
+		return nil, errs.NewValidationError(appErr.Message)
+	}
+
+
+	respData.SetTokenDetails(*tokenDetails)
+	resp := respData.SSOJWTDetails()
+	return resp, nil
 }
 
-func (u *userServiceClass) GetUser(ctx context.Context, data any) (*dto.SignInResponse, *errs.AppError) {
-	var respData domain.UserInfo
-	val := data.(map[string]string)
-	userData := val["User-Info"]
-
-	err := json.Unmarshal([]byte(userData), &respData)
-	if err != nil {
-		log.Println(err.Error())
-		return nil, errs.NewValidationError(err.Error())
+func (u *userServiceClass) GetUserById(ctx *gin.Context, request dto.GetUserByIdRequest) (*dto.SignInResponse, *errs.AppError) {
+	appErr := request.GetUserReqValidate()
+	if appErr != nil {
+		return nil, appErr
 	}
 
-	userDetails, appErr :=  u.repo.GetUser(ctx, respData.PreferredUsername)
-	if err != nil {
+	validID, appErr := u.valid.ValidateUserID(ctx, request.UserID)
+	if !validID || (appErr !=nil && appErr.Code == http.StatusNotFound) {
+		return nil, errs.NewValidationError("User ID Not Found. Invalid User ID")
+	}
+
+	userDetails, appErr :=  u.repo.GetUser(ctx, &request.UserID, request.UserName, request.Email)
+	if appErr != nil {
 		logger.Debug(appErr.Message)
 		return nil, errs.NewUnexpectedError(appErr.Message)
 	}
+
 	resp := userDetails.ToSignInDTO()
 	return resp, nil
 }

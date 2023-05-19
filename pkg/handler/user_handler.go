@@ -42,84 +42,6 @@ func (u *UserHandler) SignUp() gin.HandlerFunc {
 	}
 }
 
-func(u *UserHandler) SSOLogIn(auth sso.KeyCloakMiddleware) gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		resp := new(dto.SignInRequest)
-		err := json.NewDecoder(ctx.Request.Body).Decode(&resp)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"Message": err.Error(),
-			})
-			return
-		}
-
-		ctx = auth.GetUserWithJWTCred(ctx, resp)
-		if ctx.IsAborted(){
-
-			ctx.JSON(http.StatusExpectationFailed, gin.H{
-				"Success": false,
-				"Message": "Authorization error in handler",
-			})
-			ctx.Abort()
-			return
-
-		}else {
-			response,isDataValid, errs := u.UserService.SSOSignIn(ctx)
-			if !isDataValid || (errs != nil && errs.Code == http.StatusUnprocessableEntity) {
-				ctx.JSON(http.StatusUnprocessableEntity, gin.H{
-					"Success": false,
-					"Message": fmt.Sprintf("Invalid Request %s", errs.Message),
-				})
-				ctx.Abort()
-				return
-			}
-
-			marshalledResp, _ := json.Marshal(response)
-			_, appErr := ctx.Writer.Write(marshalledResp)
-			if appErr != nil {
-				return
-			}
-		}
-	}
-}
-
-func (u *UserHandler) GetUser(auth sso.KeyCloakMiddleware) gin.HandlerFunc{
-	return func (ctx *gin.Context){
-		auth.VerifyJWTToken(ctx)
-		if ctx.IsAborted(){
-			ctx.JSON(http.StatusExpectationFailed, gin.H{
-				"Success": false,
-				"Message": "Authorization error in handler",
-			})
-			ctx.Abort()
-			return
-		}else {
-
-			if val, ok := ctx.Get("User-Info"); !ok {
-				ctx.JSON(http.StatusExpectationFailed, gin.H{
-					"Success": false,
-					"Message": "Failed To User-Info Keys",
-				})
-				ctx.Abort()
-				return
-			}else{
-				getUser, err := u.UserService.GetUser(ctx, val)
-				if err != nil {
-					if err != nil {
-						ctx.JSON(http.StatusBadRequest, gin.H{
-							"Message": err.Message,
-						})
-						return
-					}
-				}else{
-					ctx.JSON(http.StatusFound, getUser)
-					return
-				}
-			}
-		}
-	}
-}
-
 func (u *UserHandler) SignIn() gin.HandlerFunc{
 	return func (ctx *gin.Context){
 		resp := new(dto.SignInRequest)
@@ -132,7 +54,7 @@ func (u *UserHandler) SignIn() gin.HandlerFunc{
 		}else {
 			userDetails, err := u.UserService.SignIn(ctx, resp)
 			if err != nil {
-				ctx.JSON(http.StatusBadRequest, gin.H{
+				ctx.JSON(err.Code, gin.H{
 					"Message": err.Message,
 				})
 				return
@@ -142,6 +64,61 @@ func (u *UserHandler) SignIn() gin.HandlerFunc{
 		}
 	}
 }
+
+func(u *UserHandler) SSOLogIn() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		resp := new(dto.SSOSignInRequest)
+		err := json.NewDecoder(ctx.Request.Body).Decode(&resp)
+		if err != nil {
+			if marshallingErr, ok := err.(*json.UnmarshalTypeError); ok {
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"Message": fmt.Sprintf("The field %s must be a %s", marshallingErr.Field, marshallingErr.Type.String()),
+				})
+				return
+			}
+		} else {
+			response, errs := u.UserService.SSOSignIn(ctx, *resp)
+			if errs != nil  {
+				ctx.JSON(errs.Code, gin.H{
+					"Message": fmt.Sprintf("Invalid Request: %s", errs.Message),
+				})
+				return
+			} else {
+			ctx.JSON(http.StatusFound, response)
+			return
+			}
+		}
+	}
+}
+
+func (u *UserHandler) GetUserById() gin.HandlerFunc{
+	return func (ctx *gin.Context){
+		var request dto.GetUserByIdRequest
+		err := json.NewDecoder(ctx.Request.Body).Decode(&request)
+		if err != nil {
+			if marshallingErr, ok := err.(*json.UnmarshalTypeError); ok{
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"Message": fmt.Sprintf("The field %s must be a %s", marshallingErr.Field, marshallingErr.Type.String()),
+				})
+				return
+			}
+		}else {
+			getUser, err := u.UserService.GetUserById(ctx, request)
+			if err != nil {
+				if err != nil {
+					ctx.JSON(err.Code, gin.H{
+						"Message": err.Message,
+					})
+					return
+				}
+			}else{
+				ctx.JSON(http.StatusFound, getUser)
+				return
+			}
+		}
+	}
+}
+
 
 func (u *UserHandler) ResetPassword(auth sso.KeyCloakMiddleware) gin.HandlerFunc{
 	return func(ctx *gin.Context) {
@@ -153,7 +130,6 @@ func (u *UserHandler) ResetPassword(auth sso.KeyCloakMiddleware) gin.HandlerFunc
 			})
 			return
 		}else{
-
 			response, err := u.UserService.ResetPassword(ctx, &request)
 			if err != nil {
 				ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{

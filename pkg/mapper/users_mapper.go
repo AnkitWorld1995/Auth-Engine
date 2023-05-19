@@ -15,6 +15,11 @@ type RequestValidationInterface interface {
 	ValidatePassword(ctx context.Context,password, condition string) (bool,*errs.AppError)
 	ValidateUserName(ctx context.Context, userName string) (bool, *errs.AppError)
 	ValidateEmail(ctx context.Context, email string) (bool, *errs.AppError)
+	ValidateUserID(ctx context.Context, userID int) (bool, *errs.AppError)
+}
+
+func(r *RequestValidation) ValidateUserID(ctx context.Context, userID int) (bool, *errs.AppError) {
+	return r.Repo.FindByUserId(ctx, &userID)
 }
 
 func (r *RequestValidation) ValidateUserName(ctx context.Context, userName string) (bool, *errs.AppError) {
