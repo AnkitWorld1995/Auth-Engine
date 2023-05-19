@@ -9,8 +9,8 @@ const (
 	User					string = "user"
 	Root					string = "root"
 	SalesRoot				string = "saleroot"
-	UserCredentials			string = "userCred"
 	UserMapKey				string = "userMapKey"
 	UserContextDetails		string = "User-Info"
 	UserContextJwtDetails	string = "User-JWT"
+	GrantTypePassword	    string = "password"
 )

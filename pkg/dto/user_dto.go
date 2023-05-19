@@ -1,7 +1,6 @@
 package dto
 
 import (
-	"context"
 	strUtil "github.com/agrison/go-commons-lang/stringUtils"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
@@ -10,8 +9,7 @@ import (
 	"strings"
 )
 
-type key SignInRequest
-var userKey key
+type MapClaims map[string]interface{}
 
 type SignUpRequest struct {
 	UserName 	string 	`json:"user_name"`
@@ -25,7 +23,14 @@ type SignUpRequest struct {
 	UserType	string	`json:"user_type"`
 }
 
+type SSOSignInRequest struct {
+	AuthToken	string	`json:"auth_token"`
+	Username 	string  `json:"username"`
+	Password 	string  `json:"password"`
+}
+
 type SignInRequest struct {
+	UserID 		int		`json:"user_id"`
 	UserName	string	`json:"user_name"`
 	Email 		string 	`json:"email"`
 	Password	string  `json:"password"`
@@ -51,10 +56,17 @@ type SignInResponse struct {
 	UpdatedAt 	string	`json:"updated_at"`
 }
 
-type JWTResponse struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-	ExpiresIn    int    `json:"expiresIn"`
+type SSOSignUpRequest struct {
+	AuthToken 	string `json:"auth_token,omitempty"`
+}
+
+type SSOSignInResponse struct {
+	AccessToken      string `json:"accessToken"`
+	RefreshToken     string `json:"refreshToken"`
+	RefreshExpiresIn int    `json:"refresh_expires_in"`
+	SessionState string 	`json:"SessionState"`
+	IssuedAt	 float64	`json:"issued_at"`
+	ExpiresIn    float64    `json:"expiresIn"`
 }
 
 type ResetPasswordRequest struct {
@@ -68,6 +80,34 @@ type GenericResponse struct {
 	Message 	string	`json:"message"`
 }
 
+type GetUserByIdRequest struct {
+	UserID 		int		`json:"user_id"`
+	UserName 	*string	`json:"user_name"`
+	Email 		*string	`json:"email"`
+}
+
+func (r *SSOSignInRequest) SSOSignInValidation() *errs.AppError {
+	if strUtil.IsBlank(strings.TrimSpace(r.AuthToken)) {
+		return errs.NewValidationError("Auth-Token cannot be empty")
+	}
+	return nil
+}
+
+func (r *GetUserByIdRequest) GetUserReqValidate() *errs.AppError {
+	if r.UserID == 0 {
+		return errs.NewValidationError("User ID Is Invalid. Please Provide a Correct ID.")
+	}
+
+	if r.UserName != nil && strUtil.IsBlank(strings.TrimSpace(*r.UserName)) {
+		return errs.NewValidationError("Firstname cannot be empty")
+	}
+
+	if r.Email != nil && strUtil.IsBlank(strings.TrimSpace(*r.Email)) {
+		return errs.NewValidationError("Email cannot be empty")
+	}
+
+	return nil
+}
 
 func (r *SignUpRequest) SignUpValidate() *errs.AppError{
 	_, err := mail.ParseAddress(r.Email)
@@ -105,7 +145,6 @@ func (r *SignUpRequest) SignUpValidate() *errs.AppError{
 	return nil
 }
 
-
 func (r *SignInRequest) SignInValidate() *errs.AppError {
 	if strUtil.IsBlank(strings.TrimSpace(r.UserName)) {
 		return errs.NewValidationError("User Name is empty")
@@ -116,14 +155,6 @@ func (r *SignInRequest) SignInValidate() *errs.AppError {
 	}
 
 	return nil
-}
-
-
-
-func JwtContext(ctx context.Context) (*SignInRequest, bool){
-	//log.Println("All Keys", ctx.Value())
-	ctv, ok := ctx.Value(key{}).(SignInRequest)
-	return &ctv, ok
 }
 
 func(r *ResetPasswordRequest) OnDTO() *SignInRequest {

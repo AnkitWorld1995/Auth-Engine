@@ -30,11 +30,12 @@ func NewUserRepoClass(rdbClient *sql.DB, mdbClient *mongo.Client, sqlSchema, nos
 }
 
 type UserRepository interface {
+	FindByUserId(ctx context.Context, id *int) (bool, *errs.AppError)
 	FindByEmail(ctx context.Context, email string) (bool, *errs.AppError)
 	FindByUserName(ctx context.Context, userName string) (bool, *errs.AppError)
 	SaveUser(ctx context.Context, user *Users) (*UserResponse, *errs.AppError)
 	GetPassword(ctx context.Context, cond *string) (string, *errs.AppError)
-	GetUser(ctx context.Context, cond *string) (*Users, *errs.AppError)
+	GetUser(ctx context.Context, userID *int, userName, email *string) (*Users, *errs.AppError)
 	UpdatePassword(ctx context.Context, email, password string) (*dto.GenericResponse,*errs.AppError)
 }
 
@@ -150,7 +151,21 @@ func (r *UserRepoClass) GetPassword(ctx context.Context, cond *string) (string, 
 	return password.String, nil
 }
 
-func (r *UserRepoClass) GetUser(ctx context.Context, cond *string) (*Users, *errs.AppError) {
+func (r *UserRepoClass) FindByUserId(ctx context.Context, id *int) (bool, *errs.AppError) {
+	var userID sql.NullBool
+
+	sqlQuery := fmt.Sprintf(`SELECT 1 FROM %s."users" urs WHERE urs.user_id = $1;`, r.dbSchema)
+
+	err := r.db.QueryRowContext(ctx, sqlQuery, id).Scan(&userID)
+	if err != nil || !userID.Valid {
+		return false, errs.NewNotFoundError(err.Error())
+	}
+
+	return userID.Bool, nil
+}
+
+
+func (r *UserRepoClass) GetUser(ctx context.Context, userID *int, userName, email *string) (*Users, *errs.AppError) {
 	var userResp = Users{}
 	sqlQuery := fmt.Sprintf(`select
 									id,
@@ -167,29 +182,29 @@ func (r *UserRepoClass) GetUser(ctx context.Context, cond *string) (*Users, *err
 									created_at,
 									updated_at
 								from
-									%s.users
+									%s.users urs
 								where
-									(user_name = ? or email = ?);`, r.dbSchema)
+									urs."user_id" = ? or (urs."user_name" = ? or urs."email" = ?);`, r.dbSchema)
 
 	sqlQuery = sqlx.Rebind(sqlx.DOLLAR, sqlQuery)
-	err := r.db.QueryRowContext(ctx, sqlQuery, cond, cond).Scan(&userResp.ID,
-																&userResp.UserID,
-																&userResp.UserName,
-																&userResp.FirstName,
-																&userResp.LastName,
-																&userResp.Password,
-																&userResp.Email,
-																&userResp.Phone,
-																&userResp.Address,
-																&userResp.IsAdmin,
-																&userResp.UserType,
-																&userResp.CreatedAt,
-																&userResp.UpdatedAt)
+	err := r.db.QueryRowContext(ctx, sqlQuery, userID ,userName, email).Scan(&userResp.ID,
+																				&userResp.UserID,
+																				&userResp.UserName,
+																				&userResp.FirstName,
+																				&userResp.LastName,
+																				&userResp.Password,
+																				&userResp.Email,
+																				&userResp.Phone,
+																				&userResp.Address,
+																				&userResp.IsAdmin,
+																				&userResp.UserType,
+																				&userResp.CreatedAt,
+																				&userResp.UpdatedAt)
 	if err != nil {
 		defer func(db *sql.DB) {
 			err := db.Close()
 			if err != nil {
-				logger.Error(  fmt.Sprintf("GetUser: Defer Sql Func Error: %s", err.Error()))
+				logger.Error(  fmt.Sprintf("GetUserById: Defer Sql Func Error: %s", err.Error()))
 				return
 			}
 		}(r.db)
