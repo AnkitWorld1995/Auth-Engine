@@ -5,6 +5,8 @@ go 1.19
 require (
 	github.com/Nerzal/gocloak/v7 v7.11.0
 	github.com/agrison/go-commons-lang v0.0.0-20200208220349-58e9fcb95174
+	github.com/aws/aws-lambda-go v1.41.0
+	github.com/awslabs/aws-lambda-go-api-proxy v0.14.0
 	github.com/gin-gonic/gin v1.9.0
 	github.com/google/uuid v1.3.0
 	github.com/jmoiron/sqlx v1.3.5
@@ -25,10 +27,10 @@ require (
 	github.com/go-playground/validator/v10 v10.11.2 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/goccy/go-json v0.10.0 // indirect
-	github.com/golang/snappy v0.0.1 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.13.6 // indirect
+	github.com/klauspost/compress v1.15.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
