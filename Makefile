@@ -1,6 +1,12 @@
 
 run:
-	go run cmd/main.go
+	go run main.go
 
 build:
-	go build -o build/Authenication-SVC cmd/main.go
+	set GOOS=linux
+	set GOARCH=amd64
+	set CGO_ENABLED=0
+	go build -o main main.go
+
+zip:
+	zip -jrm build/Authenication-SVC.zip build/Authenication-SVC
