@@ -5,8 +5,6 @@ go 1.19
 require (
 	github.com/Nerzal/gocloak/v7 v7.11.0
 	github.com/agrison/go-commons-lang v0.0.0-20200208220349-58e9fcb95174
-	github.com/aws/aws-lambda-go v1.41.0
-	github.com/awslabs/aws-lambda-go-api-proxy v0.14.0
 	github.com/gin-gonic/gin v1.9.0
 	github.com/google/uuid v1.3.0
 	github.com/jmoiron/sqlx v1.3.5

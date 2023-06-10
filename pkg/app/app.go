@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	ginadapter "github.com/awslabs/aws-lambda-go-api-proxy/gin"
 	"github.com/chsys/userauthenticationengine/config"
 	"github.com/chsys/userauthenticationengine/pkg/client/db"
 	"github.com/chsys/userauthenticationengine/pkg/client/sso"
@@ -22,7 +21,7 @@ import (
 	3. Return Type For AWS Lambda.
 */
 
-func StartApp(config *config.AppConfig, ginLambdaAdapter *ginadapter.GinLambda )  *ginadapter.GinLambda  {
+func StartApp(config *config.AppConfig)   {
 
 	/*
 		Start RDMS Database.
@@ -52,11 +51,7 @@ func StartApp(config *config.AppConfig, ginLambdaAdapter *ginadapter.GinLambda )
 	router := gin.Default()
 	keyCloakMiddleware:= sso.KeyCloakMiddleware{Keycloak: config.KeyCloak}
 
-	/*
-		Registering AWS LAMBDA For Gin-Adapter.
-	*/
-	ginLambdaAdapter = ginadapter.New(router)
-	log.Println("\n\n Lambda Function Client", ginLambdaAdapter)
+
 
 	/*
 		Registering A Middleware.
@@ -89,7 +84,7 @@ func StartApp(config *config.AppConfig, ginLambdaAdapter *ginadapter.GinLambda )
 	err = router.Run(fmt.Sprintf(":%s", port))
 	if err != nil {
 		//RequestContextGinLogger
-		return nil
+		return
 	}
-	return ginLambdaAdapter
+
 }

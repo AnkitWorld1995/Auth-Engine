@@ -38,6 +38,7 @@ type UserService interface {
 	GetUserById(ctx *gin.Context, request dto.GetUserByIdRequest) (*dto.SignInResponse, *errs.AppError)
 	CreateUser(ctx context.Context, request *dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError)
 	ResetPassword(ctx context.Context, request *dto.ResetPasswordRequest) (*dto.GenericResponse, *errs.AppError)
+	GetAllUser(ctx context.Context, request *dto.AllUsersRequest) (*dto.AllUsersResponse,*errs.AppError)
 }
 
 
@@ -238,4 +239,15 @@ func (u *userServiceClass) ResetPassword(ctx context.Context, request *dto.Reset
 		Success: true,
 		Message: "Password Updated Successfully.",
 	}, nil
+}
+
+func (u *userServiceClass) GetAllUser(ctx context.Context, request *dto.AllUsersRequest) (*dto.AllUsersResponse,*errs.AppError){
+	err := request.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	// Repository Function
+
+	return nil, nil
 }

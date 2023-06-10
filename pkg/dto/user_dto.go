@@ -2,6 +2,7 @@ package dto
 
 import (
 	strUtil "github.com/agrison/go-commons-lang/stringUtils"
+	"github.com/chsys/userauthenticationengine/pkg/domain"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
 	"net/http"
@@ -84,6 +85,20 @@ type GetUserByIdRequest struct {
 	UserID 		int		`json:"user_id"`
 	UserName 	*string	`json:"user_name"`
 	Email 		*string	`json:"email"`
+}
+
+type AllUsersRequest struct {
+	UserID		*int `json:"id"`
+	Email  		*string `json:"email"`
+	IsVerified  *bool   `json:"is_verified"`
+	IsBlocked   *bool   `json:"is_blocked"`
+	Limit       *int    `json:"limit"`
+	Offset      *int    `json:"offset"`
+}
+
+type AllUsersResponse struct {
+	Count 		int		`json:"count"`
+	Users 		*domain.Users `json:"users"`
 }
 
 func (r *SSOSignInRequest) SSOSignInValidation() *errs.AppError {
@@ -177,5 +192,22 @@ func(r *ResetPasswordRequest) RestPasswordValidation() *errs.AppError {
 		return errs.NewValidationError("New Password is empty")
 	}
 
+	return nil
+}
+
+func (r *AllUsersRequest) Validate() *errs.AppError {
+	if r.Email != nil {
+		_, err := mail.ParseAddress(*r.Email)
+		if err != nil {
+			return errs.NewValidationError("invalid email address")
+		}
+	}
+	if r.UserID != nil {
+		if *r.UserID == 0 {
+			return errs.NewValidationError("User id Is invalid.")
+		}
+	}else {
+		return errs.NewValidationError("User id is Blank.")
+	}
 	return nil
 }
