@@ -71,6 +71,7 @@ func StartApp(config *config.AppConfig)   {
 	router.Handle(http.MethodGet, "/sso-sign-in", userHandler.SSOLogIn())
 	router.Handle(http.MethodGet, "/get-user", userHandler.GetUserById())
 	router.Handle(http.MethodPost, "/reset-password", userHandler.ResetPassword(keyCloakMiddleware))
+	router.Handle(http.MethodGet, "/all-users", userHandler.GetAllUsers())
 	/*
 		1. Register The Router a Method router.GET With Our Request Handler Function.
 		2. In the handler function, we return the message back to client.

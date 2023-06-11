@@ -8,7 +8,7 @@ import (
 
 var log *zap.Logger
 
-func init() {
+func LogInit() {
 	config := zap.NewProductionConfig()
 	encoderConfig := zap.NewProductionEncoderConfig()
 	encoderConfig.TimeKey = "timestamp"

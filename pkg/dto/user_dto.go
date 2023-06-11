@@ -1,53 +1,24 @@
 package dto
 
 import (
-	strUtil "github.com/agrison/go-commons-lang/stringUtils"
-	"github.com/chsys/userauthenticationengine/pkg/domain"
-	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
-	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
 	"net/http"
 	"net/mail"
 	"strings"
+
+	strUtil "github.com/agrison/go-commons-lang/stringUtils"
+	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
+	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
 )
 
 type MapClaims map[string]interface{}
 
-type SignUpRequest struct {
-	UserName 	string 	`json:"user_name"`
-	FirstName	string 	`json:"first_name"`
-	LastName	string 	`json:"last_name"`
-	Email		string 	`json:"email"`
-	Password  	string 	`json:"password"`
-	PhoneNumber int32 	`json:"phone_number"`
-	Address		*string `json:"address"`
-	IsAdmin		*bool	`json:"is_admin"`
-	UserType	string	`json:"user_type"`
-}
-
-type SSOSignInRequest struct {
-	AuthToken	string	`json:"auth_token"`
-	Username 	string  `json:"username"`
-	Password 	string  `json:"password"`
-}
-
-type SignInRequest struct {
-	UserID 		int		`json:"user_id"`
-	UserName	string	`json:"user_name"`
-	Email 		string 	`json:"email"`
-	Password	string  `json:"password"`
-}
-
-type SignUpResponse struct {
-	Success		bool
-	Message		string
-}
-
-type SignInResponse struct {
+type Users struct {
 	ID 			string	`json:"id"`
 	UserID		string 	`json:"user_id"`
 	UserName 	string	`json:"user_name"`
 	FirstName	string	`json:"first_name"`
 	LastName	string	`json:"last_name"`
+	Password	string  `json:"password"`
 	Email		string	`json:"email"`
 	Phone		int32	`json:"phone"`
 	Address 	*string	`json:"address"`
@@ -57,17 +28,62 @@ type SignInResponse struct {
 	UpdatedAt 	string	`json:"updated_at"`
 }
 
+type SignUpRequest struct {
+	UserName    string  `json:"user_name"`
+	FirstName   string  `json:"first_name"`
+	LastName    string  `json:"last_name"`
+	Email       string  `json:"email"`
+	Password    string  `json:"password"`
+	PhoneNumber int32   `json:"phone_number"`
+	Address     *string `json:"address"`
+	IsAdmin     *bool   `json:"is_admin"`
+	UserType    string  `json:"user_type"`
+}
+
+type SSOSignInRequest struct {
+	AuthToken string `json:"auth_token"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+}
+
+type SignInRequest struct {
+	UserID   int    `json:"user_id"`
+	UserName string `json:"user_name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type SignUpResponse struct {
+	Success bool
+	Message string
+}
+
+type SignInResponse struct {
+	ID        string  `json:"id"`
+	UserID    string  `json:"user_id"`
+	UserName  string  `json:"user_name"`
+	FirstName string  `json:"first_name"`
+	LastName  string  `json:"last_name"`
+	Email     string  `json:"email"`
+	Phone     int32   `json:"phone"`
+	Address   *string `json:"address"`
+	IsAdmin   bool    `json:"is_admin"`
+	UserType  string  `json:"user_type"`
+	CreatedAt string  `json:"created_at"`
+	UpdatedAt string  `json:"updated_at"`
+}
+
 type SSOSignUpRequest struct {
-	AuthToken 	string `json:"auth_token,omitempty"`
+	AuthToken string `json:"auth_token,omitempty"`
 }
 
 type SSOSignInResponse struct {
-	AccessToken      string `json:"accessToken"`
-	RefreshToken     string `json:"refreshToken"`
-	RefreshExpiresIn int    `json:"refresh_expires_in"`
-	SessionState string 	`json:"SessionState"`
-	IssuedAt	 float64	`json:"issued_at"`
-	ExpiresIn    float64    `json:"expiresIn"`
+	AccessToken      string  `json:"accessToken"`
+	RefreshToken     string  `json:"refreshToken"`
+	RefreshExpiresIn int     `json:"refresh_expires_in"`
+	SessionState     string  `json:"SessionState"`
+	IssuedAt         float64 `json:"issued_at"`
+	ExpiresIn        float64 `json:"expiresIn"`
 }
 
 type ResetPasswordRequest struct {
@@ -77,28 +93,29 @@ type ResetPasswordRequest struct {
 }
 
 type GenericResponse struct {
-	Success 	bool	`json:"success"`
-	Message 	string	`json:"message"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
 }
 
 type GetUserByIdRequest struct {
-	UserID 		int		`json:"user_id"`
-	UserName 	*string	`json:"user_name"`
-	Email 		*string	`json:"email"`
+	UserID   int     `json:"user_id"`
+	UserName *string `json:"user_name"`
+	Email    *string `json:"email"`
 }
 
 type AllUsersRequest struct {
-	UserID		*int `json:"id"`
-	Email  		*string `json:"email"`
-	IsVerified  *bool   `json:"is_verified"`
-	IsBlocked   *bool   `json:"is_blocked"`
-	Limit       *int    `json:"limit"`
-	Offset      *int    `json:"offset"`
+	UserID     *int    `json:"user_id"`
+	IdIn	   []*int	`json:"id_in"`
+	Email      *string `json:"email"`
+	IsVerified *bool   `json:"is_verified"`
+	IsBlocked  *bool   `json:"is_blocked"`
+	Limit      *int    `json:"limit"`
+	Offset     *int    `json:"offset"`
 }
 
 type AllUsersResponse struct {
-	Count 		int		`json:"count"`
-	Users 		*domain.Users `json:"users"`
+	Count int32 `json:"count"`
+	User  []*Users `json:"user"`
 }
 
 func (r *SSOSignInRequest) SSOSignInValidation() *errs.AppError {
@@ -124,7 +141,7 @@ func (r *GetUserByIdRequest) GetUserReqValidate() *errs.AppError {
 	return nil
 }
 
-func (r *SignUpRequest) SignUpValidate() *errs.AppError{
+func (r *SignUpRequest) SignUpValidate() *errs.AppError {
 	_, err := mail.ParseAddress(r.Email)
 	if err != nil {
 		return errs.NewValidationError("invalid email address")
@@ -147,7 +164,7 @@ func (r *SignUpRequest) SignUpValidate() *errs.AppError{
 	}
 
 	userAccountType, mapErr := utility.MapUserAccountType(r.UserType)
-	if mapErr !=nil && mapErr.Code == http.StatusUnprocessableEntity {
+	if mapErr != nil && mapErr.Code == http.StatusUnprocessableEntity {
 		return errs.NewValidationError(mapErr.Message)
 	}
 	r.UserType = userAccountType
@@ -172,14 +189,14 @@ func (r *SignInRequest) SignInValidate() *errs.AppError {
 	return nil
 }
 
-func(r *ResetPasswordRequest) OnDTO() *SignInRequest {
+func (r *ResetPasswordRequest) OnDTO() *SignInRequest {
 	return &SignInRequest{
 		UserName: r.Email,
 		Password: r.NewPassword,
 	}
 }
 
-func(r *ResetPasswordRequest) RestPasswordValidation() *errs.AppError {
+func (r *ResetPasswordRequest) RestPasswordValidation() *errs.AppError {
 	if strUtil.IsBlank(strings.TrimSpace(r.Email)) {
 		return errs.NewValidationError("Email is empty")
 	}
@@ -206,8 +223,6 @@ func (r *AllUsersRequest) Validate() *errs.AppError {
 		if *r.UserID == 0 {
 			return errs.NewValidationError("User id Is invalid.")
 		}
-	}else {
-		return errs.NewValidationError("User id is Blank.")
 	}
 	return nil
 }

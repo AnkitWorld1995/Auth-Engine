@@ -14,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 type userServiceClass struct {
@@ -247,7 +248,56 @@ func (u *userServiceClass) GetAllUser(ctx context.Context, request *dto.AllUsers
 		return nil, err
 	}
 
-	// Repository Function
 
-	return nil, nil
+	// Repository Function
+	
+	var wg sync.WaitGroup
+	var users []*domain.Users
+	var counts int32
+	
+	errChan := make(chan *errs.AppError, 2)
+	wg.Add(1)
+	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
+		count, err :=  u.repo.GetAllUsersCount(ctx, request)
+		if err != nil {
+			errChan <- err
+		}
+		counts = *count
+
+	}(&wg)
+
+	wg.Add(1)
+	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
+		users, err =  u.repo.GetAllUsers(ctx, request)
+		if err != nil {
+			errChan <- err
+		}
+
+	}(&wg)
+
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	for errValue := range errChan {
+		if errValue != nil {
+			err = errValue
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	 userList := domain.GetAllUser(users)
+
+	resp := dto.AllUsersResponse{
+		Count: counts,
+		User: userList,
+	}
+
+	return &resp, nil
 }

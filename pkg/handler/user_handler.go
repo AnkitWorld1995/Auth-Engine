@@ -3,14 +3,12 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	strUtil "github.com/agrison/go-commons-lang/stringUtils"
 	"github.com/chsys/userauthenticationengine/pkg/client/sso"
 	"github.com/chsys/userauthenticationengine/pkg/dto"
 	_ "github.com/chsys/userauthenticationengine/pkg/lib/constants"
 	"github.com/chsys/userauthenticationengine/pkg/services"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"strconv"
 )
 
 
@@ -124,85 +122,25 @@ func (u *UserHandler) GetUserById() gin.HandlerFunc{
 func (u *UserHandler) GetAllUsers() gin.HandlerFunc{
 	return func(ctx *gin.Context) {
 
-		var (
-			userEmail 				*string
-			isVerified, isBlocked 	*bool
-			userId, limit, offset 	*int
-		)
-
-		value := ctx.Request.URL.Query().Get("limit")
-		if strUtil.IsNotBlank(value) {
-			limitCheck , err := strconv.Atoi(value)
-			if err != nil {
-				ctx.JSON(http.StatusBadRequest, "Invalid limit Input")
-				return
-			}
-			limit = &limitCheck
-		}
-
-		value = ctx.Request.URL.Query().Get("offset")
-		if strUtil.IsNotBlank(value) {
-			offsetCheck, err := strconv.Atoi(value)
-			if err != nil {
-				ctx.JSON(http.StatusBadRequest, "Invalid Offset Input")
-				return
-			}
-			offset = &offsetCheck
-		}
-
-		value = ctx.Request.URL.Query().Get("is_verified")
-		if strUtil.IsNotBlank(value) {
-			isVerifiedCheck, err := strconv.ParseBool(value)
-			if err != nil {
-				ctx.JSON(http.StatusBadRequest, "Invalid IsVerified Input")
-				return
-			}
-			isVerified = &isVerifiedCheck
-		}
-		
-		value = ctx.Request.URL.Query().Get("is_blocked")
-		if strUtil.IsNotBlank(value) {
-			isBlockedCheck, err := strconv.ParseBool(value)
-			if err != nil {
-				ctx.JSON(http.StatusBadRequest, "Invalid IsBlocked Input")
-				return
-			}
-			isBlocked = &isBlockedCheck
-		}
-
-		value = ctx.Request.URL.Query().Get("user_id")
-		if strUtil.IsNotBlank(value) {
-			userIdCheck, err := strconv.Atoi(value)
-			if err != nil {
-				ctx.JSON(http.StatusBadRequest, "Invalid UserID Input")
-				return
-			}
-			userId = &userIdCheck
-		}
-
-		value = ctx.Request.URL.Query().Get("email")
-		if strUtil.IsNotBlank(value) {
-			userEmail = &value
-		}
-		
-		userRequest := dto.AllUsersRequest{
-			UserID:     userId,
-			Email:      userEmail,
-			IsVerified: isVerified,
-			IsBlocked:  isBlocked,
-			Limit:      limit,
-			Offset:     offset,
-		}
-
-		user, err := u.UserService.GetAllUser(ctx, &userRequest)
+		var request dto.AllUsersRequest
+		err := json.NewDecoder(ctx.Request.Body).Decode(&request)
 		if err != nil {
-			ctx.JSON(err.Code, err.Message)
-			return
+			if marshallingErr, ok := err.(*json.UnmarshalTypeError); ok {
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"Message": fmt.Sprintf("The field %s must be a %s", marshallingErr.Field, marshallingErr.Type.String()),
+				})
+				return
+			}
 		}else {
-			ctx.JSON(http.StatusFound, user)
-			return
+			user, err := u.UserService.GetAllUser(ctx, &request)
+			if err != nil {
+				ctx.JSON(err.Code, err.Message)
+				return
+			}else {
+				ctx.JSON(http.StatusFound, user)
+				return
+			}
 		}
-
 	}
 }
 
