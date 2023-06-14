@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/chsys/userauthenticationengine/config"
 	"github.com/chsys/userauthenticationengine/pkg/client/db"
 	"github.com/chsys/userauthenticationengine/pkg/client/sso"
@@ -51,7 +52,12 @@ func StartApp(config *config.AppConfig)   {
 	router := gin.Default()
 	keyCloakMiddleware:= sso.KeyCloakMiddleware{Keycloak: config.KeyCloak}
 
-
+	// Start an AWS S3 Session
+	newS3Session, err := session.NewSession(config.AwsConfig)
+	if err != nil {
+		log.Fatalln(fmt.Sprintf("Failed to Create a New S3 Session  with Error %s: ", err.Error()))
+	}
+	log.Println("------- config AWS-----------", *config.AwsConfig.Region, newS3Session.Config.Region)
 
 	/*
 		Registering A Middleware.
@@ -65,13 +71,17 @@ func StartApp(config *config.AppConfig)   {
 	pingHandler := handler.PingHandler{}
 	router.Handle(http.MethodGet, "/ping", pingHandler.Ping())
 
-	userHandler  := handler.UserHandler{UserService: services.NewUserServiceClass(domain.NewUserRepoClass(dbClient, mongoClient, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection), keyCloakMiddleware)}
+	userHandler  := handler.UserHandler{UserService: services.NewUserServiceClass(domain.NewUserRepoClass(dbClient, mongoClient, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection, config.AwsConfig), keyCloakMiddleware)}
 	router.Handle(http.MethodPost, "/sign-up", userHandler.SignUp())
 	router.Handle(http.MethodGet,  "/sign-in", userHandler.SignIn())
 	router.Handle(http.MethodGet, "/sso-sign-in", userHandler.SSOLogIn())
 	router.Handle(http.MethodGet, "/get-user", userHandler.GetUserById())
 	router.Handle(http.MethodPost, "/reset-password", userHandler.ResetPassword(keyCloakMiddleware))
 	router.Handle(http.MethodGet, "/all-users", userHandler.GetAllUsers())
+
+	uploadHandler := handler.UploadHandler{UploadFileService: services.NewUploadFileService(newS3Session)}
+	router.Handle(http.MethodPost, "/upload", uploadHandler.UploadFileToS3())
+
 	/*
 		1. Register The Router a Method router.GET With Our Request Handler Function.
 		2. In the handler function, we return the message back to client.

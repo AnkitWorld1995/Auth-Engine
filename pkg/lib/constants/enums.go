@@ -13,4 +13,6 @@ const (
 	UserContextDetails		string = "User-Info"
 	UserContextJwtDetails	string = "User-JWT"
 	GrantTypePassword	    string = "password"
+	GetS3Region				string = "S3_REGION"
+	GetS3Bucket				string = "S3_BUCKET"
 )

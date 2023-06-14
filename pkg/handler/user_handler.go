@@ -144,7 +144,6 @@ func (u *UserHandler) GetAllUsers() gin.HandlerFunc{
 	}
 }
 
-
 func (u *UserHandler) ResetPassword(auth sso.KeyCloakMiddleware) gin.HandlerFunc{
 	return func(ctx *gin.Context) {
 		var request dto.ResetPasswordRequest

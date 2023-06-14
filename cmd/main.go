@@ -25,5 +25,5 @@ func init(){
 
 func main() {
 	configuration := config.AppConfigs()
-     app.StartApp(configuration)
+	app.StartApp(configuration)
 }

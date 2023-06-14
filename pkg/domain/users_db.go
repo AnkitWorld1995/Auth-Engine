@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/chsys/userauthenticationengine/pkg/dto"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"github.com/chsys/userauthenticationengine/pkg/lib/logger"
@@ -17,15 +18,17 @@ type UserRepoClass struct {
 	dbSchema      string
 	nosqlDatabase string
 	collection    map[string]string
+	awsConfig 	  *aws.Config
 }
 
-func NewUserRepoClass(rdbClient *sql.DB, mdbClient *mongo.Client, sqlSchema, nosqlDatabase string, collection map[string]string) *UserRepoClass {
+func NewUserRepoClass(rdbClient *sql.DB, mdbClient *mongo.Client, sqlSchema, nosqlDatabase string, collection map[string]string, awsConfig *aws.Config) *UserRepoClass {
 	return &UserRepoClass{
 		db:            rdbClient,
 		mongo:         mdbClient,
 		dbSchema:      sqlSchema,
 		nosqlDatabase: nosqlDatabase,
 		collection:    collection,
+		awsConfig: 	   awsConfig,
 	}
 }
 
