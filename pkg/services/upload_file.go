@@ -1,37 +1,34 @@
 package services
 
 import (
-	"bytes"
 	"context"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/chsys/userauthenticationengine/pkg/domain"
 	"github.com/chsys/userauthenticationengine/pkg/dto"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"github.com/chsys/userauthenticationengine/pkg/lib/logger"
 	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
-	"io"
-	"log"
 	"net/http"
 )
 
 type uploadFileServiceClass struct {
-	s3Session  *session.Session
+	repo  		domain.UserRepository
+	s3Session  	*session.Session
 }
 
-
-func NewUploadFileService(s3Session *session.Session) *uploadFileServiceClass {
+func NewUploadFileService(s3Session *session.Session,  repo domain.UserRepository) *uploadFileServiceClass {
 	return &uploadFileServiceClass{
 		s3Session: s3Session,
+		repo: repo,
 	}
 }
-
 
 type UploadFileServices interface {
 	Upload(ctx context.Context, inputData *dto.UploadFileInput) (*dto.UploadFileResp,*errs.AppError)
 }
+
 
 func (u *uploadFileServiceClass) Upload(ctx context.Context, inputData *dto.UploadFileInput) (*dto.UploadFileResp,*errs.AppError){
 
@@ -42,38 +39,29 @@ func (u *uploadFileServiceClass) Upload(ctx context.Context, inputData *dto.Uplo
 		return nil, errs.NewValidationError(err.Error())
 	}
 
-	// S3 Upload.
-	log.Println( inputData.FileHeader.Filename, inputData.FileHeader.Size)
-	buffer := bytes.NewBuffer(nil)
-	_, err = io.Copy(buffer, inputData.File)
-	if err != nil {
-		logger.Error("Service/Upload/", zap.String("Buffer: ERROR", err.Error()))
-		return nil, errs.NewUnexpectedError(err.Error())
+	fileBuffer, appErr := utility.CreateFileBuffer(inputData.File)
+	if appErr != nil {
+		logger.Error("Service/Upload/", zap.String("Buffer: ERROR", appErr.Message))
+		return nil, appErr
 	}
 
-	// Config settings: this is where you choose the bucket, filename, content-type etc.
-	// of the file you're uploading.
-	s3Resp , err := s3.New(u.s3Session).PutObject(&s3.PutObjectInput{
-		Bucket:               aws.String(utility.ReadS3Bucket()),
-		Key:                  aws.String(inputData.FileHeader.Filename),
-		ACL:                  aws.String("private"),
-		Body:                 bytes.NewReader(buffer.Bytes()),
-		ContentLength:        aws.Int64(inputData.FileHeader.Size),
-		ContentType:          aws.String(http.DetectContentType(buffer.Bytes())),
-		ContentDisposition:   aws.String("attachment"),
-		ServerSideEncryption: aws.String("AES256"),
-	})
-	if err != nil {
-		logger.Error("Service/Upload/", zap.String("S3 Upload: ERROR", err.Error()))
-		return nil, errs.NewValidationError(err.Error())
+	s3Response, appErr := domain.S3Upload(u.s3Session, fileBuffer, inputData)
+	if appErr != nil {
+		logger.Error("Service/Upload/", zap.String("S3 Upload: ERROR", appErr.Message))
+		return nil, appErr
+	}
+
+	response, appErr := u.repo.UploadFilesWriteDB(ctx, 4, s3Response)
+	if appErr != nil {
+		logger.Error("Service/Upload/", zap.String("Insert Upload File: ERROR", appErr.Message))
+		return nil, appErr
 	}
 
 	return &dto.UploadFileResp{
 		HttpCode: http.StatusOK,
 		Message: "Uploaded File SuccessFully.",
 		Data: map[string]interface{}{
-			"Id": 	s3Resp.SSEKMSKeyId,
-			"Data": s3Resp.GoString(),
+			"DATA": response,
 		},
 	}, nil
 }

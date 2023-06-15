@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/chsys/userauthenticationengine/pkg/dto"
@@ -10,6 +11,7 @@ import (
 	"github.com/chsys/userauthenticationengine/pkg/lib/logger"
 	"github.com/jmoiron/sqlx"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
 )
 
 type UserRepoClass struct {
@@ -42,6 +44,7 @@ type UserRepository interface {
 	UpdatePassword(ctx context.Context, email, password string) (*dto.GenericResponse, *errs.AppError)
 	GetAllUsersCount(ctx context.Context, req *dto.AllUsersRequest) (*int32, *errs.AppError)
 	GetAllUsers(ctx context.Context, req *dto.AllUsersRequest) ([]*Users, *errs.AppError)
+	UploadFilesWriteDB(ctx context.Context, userId int ,req *UploadFileMetaData) (*UploadFileDBResponse,*errs.AppError)
 }
 
 func (r *UserRepoClass) FindByEmail(ctx context.Context, email string) (bool, *errs.AppError) {
@@ -221,7 +224,7 @@ func (r *UserRepoClass) GetAllUsersCount(ctx context.Context, req *dto.AllUsersR
 
 	var count sql.NullInt32
 	query := fmt.Sprintf(`SELECT distinct(count(*)) FROM %s.users urs `, r.dbSchema)
-	query, inputArgs := filtersClause(req, query, true)
+	query, inputArgs := FilterUserClauses(req, query, true)
 
 
 	query, inputArgs, err := sqlx.In(query, inputArgs...)
@@ -247,7 +250,7 @@ func (r *UserRepoClass) GetAllUsersCount(ctx context.Context, req *dto.AllUsersR
 func (r *UserRepoClass) GetAllUsers(ctx context.Context, req *dto.AllUsersRequest) ([]*Users, *errs.AppError) {
 
 	query := fmt.Sprintf(`SELECT * FROM %s.users urs `, r.dbSchema)
-	query, inputArgs := filtersClause(req, query, false)
+	query, inputArgs := FilterUserClauses(req, query, false)
 
 
 
@@ -299,75 +302,41 @@ func (r *UserRepoClass) GetAllUsers(ctx context.Context, req *dto.AllUsersReques
 	}
 }
 
-func filtersClause(req *dto.AllUsersRequest, query string, isCount bool) (string, []interface{}) {
-	var (
-		inputArgs []interface{}
-		isWhere   bool
-	)
+func (r *UserRepoClass) UploadFilesWriteDB(ctx context.Context, userId int ,req *UploadFileMetaData) (*UploadFileDBResponse,*errs.AppError) {
 
-	// filtersClause
-	if req.UserID != nil {
-		query += fmt.Sprintf(" Where urs.user_id = ? ")
-		inputArgs = append(inputArgs, req.UserID)
-		isWhere = true
+	var uploadId string
+	marshalledValue, _ := json.Marshal(req)
+
+	sqlQuery := fmt.Sprintf(`INSERT INTO %s.upload_files
+				(user_id, upload_file, created_at, updated_at)
+				VALUES( ?, ?, now(), now()) returning id;`, r.dbSchema)
+
+	sqlQuery = sqlx.Rebind(sqlx.DOLLAR, sqlQuery)
+	tx, err := r.db.Begin()
+	if err != nil {
+		logger.Error("Service/Upload/UploadFilesWriteDB", zap.String("Upload: TX ERROR", err.Error()))
+		return nil,  errs.NewUnexpectedError(err.Error())
 	}
 
-	if  req.IdIn != nil && len(req.IdIn) > 0 {
-		if isWhere {
-			query += fmt.Sprintf(" or urs.user_id in (?) ")
-			inputArgs = append(inputArgs, req.IdIn)
-		}else {
-			query += fmt.Sprintf(" Where urs.user_id in (?) ")
-			inputArgs = append(inputArgs, req.IdIn)
-			isWhere = true
+	sqlErr := tx.QueryRowContext(ctx, sqlQuery, userId, string(marshalledValue)).Scan(&uploadId)
+	if err != nil {
+		logger.Error("Service/Upload/UploadFilesWriteDB", zap.String("Upload: TX Execute ERROR", err.Error()))
+		return nil, errs.NewUnexpectedError(err.Error())
+	}
+
+	sqlErr = tx.Commit()
+	if sqlErr != nil {
+		sqlErr := tx.Rollback()
+		if sqlErr != nil {
+			return nil, nil
 		}
+		return nil, nil
 	}
 
-	if req.Email != nil && req.IdIn == nil {
-		if isWhere {
-			query += fmt.Sprintf(" AND urs.email = ? ")
-			inputArgs = append(inputArgs, req.Email)
-		} else {
-			query += fmt.Sprintf(" Where urs.email = ? ")
-			inputArgs = append(inputArgs, req.Email)
-			isWhere = true
-		}
-
-	}
-
-	if req.IsVerified != nil && req.IdIn == nil {
-		if isWhere {
-			query += fmt.Sprintf(" AND urs.is_verified = ? ")
-			inputArgs = append(inputArgs, req.IsVerified)
-		} else {
-			query += fmt.Sprintf(" Where urs.is_verified = ? ")
-			inputArgs = append(inputArgs, req.IsVerified)
-			isWhere = true
-		}
-
-	}
-
-	if req.IsBlocked != nil && req.IdIn == nil {
-		if isWhere {
-			query += fmt.Sprintf(" AND urs.is_blocked = ? ")
-			inputArgs = append(inputArgs, req.IsBlocked)
-		} else {
-			query += fmt.Sprintf(" Where urs.is_blocked = ? ")
-			inputArgs = append(inputArgs, req.IsBlocked)
-			isWhere = true
-		}
-
-	}
-
-	if !isCount {
-		if req.Limit != nil && req.Offset != nil {
-			query += fmt.Sprintf(" order by urs.user_id asc limit ? offset ? ")
-			inputArgs = append(inputArgs, req.Limit, req.Offset)
-		} else {
-			query += fmt.Sprintf(" order by urs.user_id asc limit 10 offset 0 asc")
-		}
-	}
-
-
-	return query, inputArgs
+	return &UploadFileDBResponse{
+		UploadedID: uploadId,
+		URL:        req.URL,
+	}, nil
 }
+
+

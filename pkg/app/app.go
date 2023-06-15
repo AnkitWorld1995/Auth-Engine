@@ -79,7 +79,7 @@ func StartApp(config *config.AppConfig)   {
 	router.Handle(http.MethodPost, "/reset-password", userHandler.ResetPassword(keyCloakMiddleware))
 	router.Handle(http.MethodGet, "/all-users", userHandler.GetAllUsers())
 
-	uploadHandler := handler.UploadHandler{UploadFileService: services.NewUploadFileService(newS3Session)}
+	uploadHandler := handler.UploadHandler{UploadFileService: services.NewUploadFileService(newS3Session, domain.NewUserRepoClass(dbClient, mongoClient, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection, config.AwsConfig))}
 	router.Handle(http.MethodPost, "/upload", uploadHandler.UploadFileToS3())
 
 	/*
