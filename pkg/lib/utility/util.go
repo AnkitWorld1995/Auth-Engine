@@ -135,3 +135,10 @@ func CreateFileBuffer(input multipart.File) (*bytes.Buffer, *errs.AppError) {
 	}
 	return buffer, nil
 }
+
+func MakeByte(str string) []byte {
+	newByte := make([]byte, 0)
+	newByte = []byte(str)
+
+	return newByte
+}

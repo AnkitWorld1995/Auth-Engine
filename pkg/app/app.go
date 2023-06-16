@@ -81,6 +81,7 @@ func StartApp(config *config.AppConfig)   {
 
 	uploadHandler := handler.UploadHandler{UploadFileService: services.NewUploadFileService(newS3Session, domain.NewUserRepoClass(dbClient, mongoClient, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection, config.AwsConfig))}
 	router.Handle(http.MethodPost, "/upload", uploadHandler.UploadFileToS3())
+	router.Handle(http.MethodPost, "/upload-All", uploadHandler.UploadAllFileToS3())
 
 	/*
 		1. Register The Router a Method router.GET With Our Request Handler Function.

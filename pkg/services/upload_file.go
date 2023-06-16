@@ -10,7 +10,6 @@ import (
 	"github.com/chsys/userauthenticationengine/pkg/lib/utility"
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 type uploadFileServiceClass struct {
@@ -27,6 +26,7 @@ func NewUploadFileService(s3Session *session.Session,  repo domain.UserRepositor
 
 type UploadFileServices interface {
 	Upload(ctx context.Context, inputData *dto.UploadFileInput) (*dto.UploadFileResp,*errs.AppError)
+	UploadAll(ctx context.Context, inputData *dto.UploadFileListInput) *errs.AppError
 }
 
 
@@ -58,10 +58,27 @@ func (u *uploadFileServiceClass) Upload(ctx context.Context, inputData *dto.Uplo
 	}
 
 	return &dto.UploadFileResp{
-		HttpCode: http.StatusOK,
 		Message: "Uploaded File SuccessFully.",
 		Data: map[string]interface{}{
 			"DATA": response,
 		},
 	}, nil
+}
+
+func (u *uploadFileServiceClass) UploadAll(ctx context.Context, inputData *dto.UploadFileListInput) *errs.AppError {
+
+	validate := validator.New()
+	err := validate.Struct(inputData)
+	if err != nil {
+		logger.Error("Service/UploadAll/", zap.String("Validate: ERROR", err.Error()))
+		return errs.NewUnexpectedError(err.Error())
+	}
+
+	_, appErr := domain.S3MultiUpload(u.s3Session, inputData)
+	if appErr != nil {
+		logger.Error("Service/UploadAll/", zap.String("S3MultiUpload: ERROR", appErr.Message))
+		return appErr
+	}
+
+	return nil
 }

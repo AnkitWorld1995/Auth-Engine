@@ -39,7 +39,7 @@ func (u *UploadHandler) UploadFileToS3() gin.HandlerFunc{
 				)
 				return
 			}else {
-				ctx.JSON(resp.HttpCode,
+				ctx.JSON(http.StatusOK,
 					dto.UploadFileResp{
 						Message: resp.Message,
 						Data: resp.Data,
@@ -47,6 +47,34 @@ func (u *UploadHandler) UploadFileToS3() gin.HandlerFunc{
 				)
 				return
 			}
+		}
+	}
+}
+
+
+func (u *UploadHandler) UploadAllFileToS3() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		multiPartForm, _:= ctx.MultipartForm()
+		fileHeader := multiPartForm.File["file"]
+
+		if len(fileHeader) > 0 {
+
+			fileData := new(dto.UploadFileListInput)
+			for _, fileValue := range fileHeader {
+				fileData.FileHeader = append(fileData.FileHeader, fileValue)
+			}
+
+			// Service Method.
+			u.UploadFileService.UploadAll(ctx, fileData)
+
+		}else {
+			ctx.JSON(http.StatusNotFound,
+				dto.UploadFileResp{
+					Message:  "Sorry!No File Found.",
+					Data: map[string]interface{}{"Data" : "No Data Found. Please insert a File To Upload."},
+				},
+			)
+			return
 		}
 	}
 }
