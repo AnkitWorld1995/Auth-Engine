@@ -6,11 +6,12 @@ require (
 	github.com/Nerzal/gocloak/v7 v7.11.0
 	github.com/agrison/go-commons-lang v0.0.0-20200208220349-58e9fcb95174
 	github.com/aws/aws-lambda-go v1.41.0
+	github.com/aws/aws-sdk-go v1.44.300
 	github.com/awslabs/aws-lambda-go-api-proxy v0.14.0
 	github.com/gin-gonic/gin v1.9.0
+	github.com/go-playground/validator/v10 v10.11.2
 	github.com/google/uuid v1.3.0
 	github.com/jmoiron/sqlx v1.3.5
-	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.7
 	go.mongodb.org/mongo-driver v1.11.3
 	go.uber.org/zap v1.24.0
@@ -18,14 +19,12 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go v1.44.300 // indirect
 	github.com/bytedance/sonic v1.8.0 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.11.2 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/goccy/go-json v0.10.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
