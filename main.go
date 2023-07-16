@@ -24,7 +24,7 @@ func init(){
 	ginLambda = ginadapter.New(r)
 }
 
-// Handler AWS Lambda Function handler.
+// Handler AWS Lambda Function handler (Gin Adapter specific For HTTP AWS Gateway).
 func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// If no name is provided in the HTTP request body, throw an error
 	log.Println(" ======== AWS Lambda Request handler ========: ", req.HTTPMethod, req.Path, req.Resource)

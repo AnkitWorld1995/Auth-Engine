@@ -1,11 +1,16 @@
 package app
 
 import (
+	"fmt"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/chsys/userauthenticationengine/config"
 	_ "github.com/chsys/userauthenticationengine/pkg/client/db"
+	"github.com/chsys/userauthenticationengine/pkg/domain"
 	"github.com/chsys/userauthenticationengine/pkg/handler"
 	"github.com/chsys/userauthenticationengine/pkg/middleware"
+	"github.com/chsys/userauthenticationengine/pkg/services"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 )
 
@@ -40,6 +45,13 @@ func StartApp(config *config.AppConfig, router *gin.Engine)  *gin.Engine {
 
 	//keyCloakMiddleware:= sso.KeyCloakMiddleware{Keycloak: config.KeyCloak}
 
+	// Start an AWS S3 Session
+	newS3Session, err := session.NewSession(config.AwsConfig)
+	if err != nil {
+		log.Fatalln(fmt.Sprintf("Failed to Create a New S3 Session  with Error %s: ", err.Error()))
+	}
+	log.Println("------- config AWS-----------", *config.AwsConfig.Region, newS3Session.Config.Region)
+
 
 	/*
 		Registering A Middleware.
@@ -52,6 +64,10 @@ func StartApp(config *config.AppConfig, router *gin.Engine)  *gin.Engine {
 
 	pingHandler := handler.PingHandler{}
 	router.Handle(http.MethodGet, "/ping", pingHandler.Ping())
+
+	uploadHandler := handler.UploadHandler{UploadFileService: services.NewUploadFileService(newS3Session, domain.NewUserRepoClass(nil, nil, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection, config.AwsConfig))}
+	router.Handle(http.MethodPost, "/upload", uploadHandler.UploadFileToS3())
+	router.Handle(http.MethodPost, "/upload-All", uploadHandler.UploadAllFileToS3())
 
 	//userHandler  := handler.UserHandler{UserService: services.NewUserServiceClass(domain.NewUserRepoClass(dbClient, mongoClient, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection), keyCloakMiddleware)}
 	//router.Handle(http.MethodPost, "/sign-up", userHandler.SignUp())

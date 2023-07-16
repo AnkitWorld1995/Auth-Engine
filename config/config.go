@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"github.com/Nerzal/gocloak/v7"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/chsys/userauthenticationengine/pkg/client/db"
 	"github.com/chsys/userauthenticationengine/pkg/client/sso"
 	"github.com/chsys/userauthenticationengine/pkg/lib/constants"
@@ -19,11 +20,14 @@ type AppConfig struct {
 	RdmsDB	 *db.PostgresConfig
 	MongoDB  *db.MongoConfig
 	KeyCloak *sso.KeyCloak
+	AwsConfig *aws.Config
 }
 
 var applicationConfig *AppConfig
 
 func Init()  {
+	var maxGlobalRetry  	= 5
+	var S3Region			= utility.ReadS3Region()
 	userCollection := make(map[string]string)
 	userCollection[constants.MongoCollectionName] = utility.ReadNSQLCollection()
 	appConfig := &AppConfig{
@@ -51,9 +55,13 @@ func Init()  {
 			ClientSecret: "SACqjRGHCnNs3po9V4BcwKqLj4hDVmZg",
 			Realm:        "Authentication-SVC",
 		},
+		AwsConfig: &aws.Config{
+			Region:            &S3Region,
+			MaxRetries:        &maxGlobalRetry,
+		},
 	}
 	applicationConfig = appConfig
-	fmt.Printf("The value Of App Config :== %v+\n", applicationConfig.RdmsDB)
+	fmt.Printf("The value Of App Config :== %v+\n", applicationConfig.AwsConfig)
 }
 
 func AppConfigs() *AppConfig{
