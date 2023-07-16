@@ -11,7 +11,7 @@ import (
 	"log"
 )
 
-var ginLambda *ginadapter.GinLambda
+var ginLambda *ginadapter.GinLambdaV2
 
 /*
 	Main Function To Initialize the project.
@@ -21,13 +21,13 @@ func init(){
 	configuration := config.AppConfigs()
 	r := gin.Default()
 	r = app.StartApp(configuration, r)
-	ginLambda = ginadapter.New(r)
+	ginLambda = ginadapter.NewV2(r)
 }
 
 // Handler AWS Lambda Function handler (Gin Adapter specific For HTTP AWS Gateway).
-func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func Handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	// If no name is provided in the HTTP request body, throw an error
-	log.Println(" ======== AWS Lambda Request handler ========: ", req.HTTPMethod, req.Path, req.Resource)
+	log.Println(" ======== AWS Lambda Request handler ========: ", req.Body, req.RawPath, req.PathParameters)
 	return ginLambda.ProxyWithContext(ctx, req)
 }
 

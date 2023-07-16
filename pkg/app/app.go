@@ -63,7 +63,8 @@ func StartApp(config *config.AppConfig, router *gin.Engine)  *gin.Engine {
 	//router.Use(keyCloakMiddleware.VerifyJWTToken())
 
 	pingHandler := handler.PingHandler{}
-	router.Handle(http.MethodGet, "/ping", pingHandler.Ping())
+	router.Handle(http.MethodGet, "/ping2", pingHandler.Ping2())
+	router.Handle(http.MethodGet, "/test2", pingHandler.Test())
 
 	uploadHandler := handler.UploadHandler{UploadFileService: services.NewUploadFileService(newS3Session, domain.NewUserRepoClass(nil, nil, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection, config.AwsConfig))}
 	router.Handle(http.MethodPost, "/upload", uploadHandler.UploadFileToS3())
