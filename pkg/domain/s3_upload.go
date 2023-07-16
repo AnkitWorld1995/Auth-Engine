@@ -2,6 +2,7 @@ package domain
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/private/protocol/rest"
@@ -13,9 +14,12 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"io"
+	"log"
+	"mime/multipart"
 	"net/http"
-	"os"
 	"strings"
+	"sync"
+	"time"
 )
 
 type UploadFileMetaData struct {
@@ -82,79 +86,140 @@ func S3Upload(sess *session.Session, buffer *bytes.Buffer, inputData *dto.Upload
 
 func S3MultiUpload(sess *session.Session, inputData *dto.UploadFileListInput) ([]*UploadFileMetaData,*errs.AppError) {
 	// Convert the File Stored In String into []Byte.
+
+	start := time.Now()
 	var fileBufferLst []*MultiPartFileData
-	//errChan := make(chan error, 2)
-	for i:= 0; i < len(inputData.FileHeader); i++ {
 
+	// Concurrent Code.
+	var wg sync.WaitGroup
+	var mux sync.RWMutex
+
+	for _, fileHeader := range inputData.FileHeader{
 		var fileData MultiPartFileData
-		fileOut, err := os.Create(inputData.FileHeader[i].Filename)
-		if err != nil {
-			//errChan <- err
-			return nil, errs.NewUnexpectedError(err.Error())
-		}
+		wg.Add(1)
+		go func(fileData *MultiPartFileData, mux *sync.RWMutex,fileHeader *multipart.FileHeader) {
+			defer wg.Done()
+			fileOut, err := fileHeader.Open()
+			if err != nil {
+				//errChan <- err
+				return
+			}
 
-		fileBuffer, err := io.ReadAll(fileOut)
-		if err != nil {
-			//errChan <- err
-			return nil, errs.NewUnexpectedError(err.Error())
-		}
+			fileBuffer, err := io.ReadAll(fileOut)
+			if err != nil {
+				//errChan <- err
+				return
+			}
 
-		fileData.FileName = &inputData.FileHeader[i].Filename
-		fileData.FileSize = &inputData.FileHeader[i].Size
-		fileData.FileBufferByte = &fileBuffer
+			mux.Lock()
+			fileData.FileName = &fileHeader.Filename
+			fileData.FileSize = &fileHeader.Size
+			fileData.FileBufferByte = &fileBuffer
+			fileBufferLst = append(fileBufferLst, fileData)
+			mux.Unlock()
 
-		fileBufferLst = append(fileBufferLst, &fileData)
+		}(&fileData, &mux,fileHeader)
 	}
-	resp, err := multiUpload(sess,fileBufferLst)
+	wg.Wait()
+
+	resp, err := multiUpload(sess,fileBufferLst, start)
 	if err != nil {
-		logger.Error("Service/Multi-Upload/", zap.String("S3 Multi-Upload: ERROR", err.Message))
+		logger.Error("Service/S3-Multi-Upload/", zap.String("S3 Multi-Upload: ERROR", err.Message))
 		return nil, errs.NewValidationError(err.Message)
 	}
 	return resp, nil
 }
 
-func multiUpload(sess *session.Session, fileDataList []*MultiPartFileData) ([]*UploadFileMetaData,*errs.AppError) {
+func multiUpload(sess *session.Session, fileDataList []*MultiPartFileData, start time.Time) ([]*UploadFileMetaData,*errs.AppError) {
 	// Config settings: this is where you choose the bucket, filename, content-type etc.
 	// of the file you're uploading.
 
-	mapFileNameURL := make(map[string]string)
-	for j:= 0; j < len(fileDataList); j++ {
-		_ , err := s3.New(sess).PutObject(&s3.PutObjectInput{
-			Bucket:               aws.String(utility.ReadS3Bucket()),
-			Key:                  aws.String(*fileDataList[j].FileName),
-			ACL:                  aws.String("private"),
-			Body:                 bytes.NewReader(*fileDataList[j].FileBufferByte),
-			ContentLength:        aws.Int64(*fileDataList[j].FileSize),
-			ContentType:          aws.String(http.DetectContentType(*fileDataList[j].FileBufferByte)),
-			ContentDisposition:   aws.String("attachment"),
-			ServerSideEncryption: aws.String("AES256"),
-		})
-		if err != nil {
-			logger.Error("Service/Multi-Upload/", zap.String("S3 Multi-Upload: ERROR", err.Error()))
-			return nil, errs.NewValidationError(err.Error())
-		}
 
-		req, _ := s3.New(sess).GetObjectRequest(&s3.GetObjectInput{
-			Bucket: aws.String(utility.ReadS3Bucket()),
-			Key:    aws.String(*fileDataList[j].FileName),
-		})
-		rest.Build(req)
-		mapFileNameURL[*fileDataList[j].FileName] = req.HTTPRequest.URL.String()
+	//Concurrent Code
+	var wg sync.WaitGroup
+	var mux sync.RWMutex
+	mapFileNameURL 	:= make(map[string]string)
+	uploadSuccess 	:= make(chan bool)
+	errChan 		:= make(chan error, 2)
+
+	for _, fileRawValue := range fileDataList {
+
+		wg.Add(1)
+		go func(fileRawValue *MultiPartFileData) {
+			defer wg.Done()
+			_, err := s3.New(sess).PutObject(&s3.PutObjectInput{
+				Bucket:               aws.String(utility.ReadS3Bucket()),
+				Key:                  aws.String(*fileRawValue.FileName),
+				ACL:                  aws.String("private"),
+				Body:                 bytes.NewReader(*fileRawValue.FileBufferByte),
+				ContentLength:        aws.Int64(*fileRawValue.FileSize),
+				ContentType:          aws.String(http.DetectContentType(*fileRawValue.FileBufferByte)),
+				ContentDisposition:   aws.String("attachment"),
+				ServerSideEncryption: aws.String("AES256"),
+			})
+			if err != nil {
+				logger.Error("Service/Multi-Upload/", zap.String("Multi-Upload: ERROR", err.Error()))
+				errChan <- err
+				return
+			}
+			log.Println("Exiting The 1st Go")
+			uploadSuccess <- true
+
+		}(fileRawValue)
+
+		go func(mux *sync.RWMutex, fileRawValue *MultiPartFileData) {
+			if <- uploadSuccess {
+				log.Println("Entering The 2st Go")
+				req, _ := s3.New(sess).GetObjectRequest(&s3.GetObjectInput{
+					Bucket: aws.String(utility.ReadS3Bucket()),
+					Key:    aws.String(*fileRawValue.FileName),
+				})
+				rest.Build(req)
+				mux.Lock()
+				mapFileNameURL[*fileRawValue.FileName] = req.HTTPRequest.URL.String()
+				fmt.Println("\nAfter here == >", req.HTTPRequest.URL.String())
+				mux.Unlock()
+			}
+		}(&mux, fileRawValue)
+
 	}
+
+	go func() {
+		wg.Wait()
+		close(errChan)
+		close(uploadSuccess)
+	}()
+
+	err := utility.JoinChannelError(errChan)
+	if err != nil {
+		newError := errs.AppError{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+		return nil, &newError
+	}
+
 
 	s3RespObject := make([]*UploadFileMetaData, len(fileDataList))
-	for k:=0; k < len(fileDataList); k++ {
-
-		resp := &UploadFileMetaData{
-			UniqueID:         uuid.New().String(),
-			FileName:         *fileDataList[k].FileName,
-			FileSize:         *fileDataList[k].FileSize,
-			URL:              mapFileNameURL[*fileDataList[k].FileName],
-			Mime:             http.DetectContentType(*fileDataList[k].FileBufferByte),
-			Ext:              strings.Split(*fileDataList[k].FileName, ".")[1],
-			DataStreamSHA256: utility.SingleSHA(*fileDataList[k].FileBufferByte),
-		}
-		s3RespObject = append(s3RespObject, resp)
+	for _, fileDataResp := range fileDataList{
+		wg.Add(1)
+		go func(fileDataResp *MultiPartFileData, mux *sync.RWMutex) {
+			defer wg.Done()
+			resp := &UploadFileMetaData{
+				UniqueID:         uuid.New().String(),
+				FileName:         *fileDataResp.FileName,
+				FileSize:         *fileDataResp.FileSize,
+				URL:              mapFileNameURL[*fileDataResp.FileName],
+				Mime:             http.DetectContentType(*fileDataResp.FileBufferByte),
+				Ext:              strings.Split(*fileDataResp.FileName, ".")[1],
+				DataStreamSHA256: utility.SingleSHA(*fileDataResp.FileBufferByte),
+			}
+			mux.Lock()
+			s3RespObject = append(s3RespObject, resp)
+			mux.Unlock()
+		}(fileDataResp, &mux)
 	}
+	wg.Wait()
+	log.Println("\n\n Time Ellipsed S3 Upload at ==> ", time.Since(start))
 	return s3RespObject, nil
 }

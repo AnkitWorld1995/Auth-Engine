@@ -58,15 +58,30 @@ func (u *UploadHandler) UploadAllFileToS3() gin.HandlerFunc {
 		fileHeader := multiPartForm.File["file"]
 
 		if len(fileHeader) > 0 {
-
 			fileData := new(dto.UploadFileListInput)
 			for _, fileValue := range fileHeader {
 				fileData.FileHeader = append(fileData.FileHeader, fileValue)
 			}
 
 			// Service Method.
-			u.UploadFileService.UploadAll(ctx, fileData)
-
+			resp, err := u.UploadFileService.UploadAll(ctx, fileData)
+			if err != nil {
+				ctx.JSON(err.Code,
+					dto.UploadFileResp{
+						Message: err.Message,
+						Data: map[string]interface{}{"Data" : "Nil"},
+					},
+				)
+				return
+			}else {
+				ctx.JSON(http.StatusOK,
+					dto.UploadFileResp{
+						Message: resp.Message,
+						Data:    resp.Data,
+					},
+				)
+				return
+			}
 		}else {
 			ctx.JSON(http.StatusNotFound,
 				dto.UploadFileResp{

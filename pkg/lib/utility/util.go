@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/chsys/userauthenticationengine/pkg/lib/constants"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
@@ -141,4 +142,17 @@ func MakeByte(str string) []byte {
 	newByte = []byte(str)
 
 	return newByte
+}
+
+func JoinChannelError(err chan error) error{
+	if len(err) > 0 {
+		var newErr []error
+		for e := range err {
+			newErr = append(newErr, e)
+		}
+		err2 := errors.Join(newErr...)
+		return err2
+	}else {
+		return nil
+	}
 }
