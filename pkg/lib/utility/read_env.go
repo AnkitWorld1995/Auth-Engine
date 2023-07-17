@@ -69,3 +69,8 @@ func ReadS3Bucket() string {
 	s3Region := os.Getenv(constants.GetS3Bucket)
 	return s3Region
 }
+
+func ReadDynamoDBURL() string {
+	url := os.Getenv(constants.GetDynamoDBUrl)
+	return url
+}

@@ -12,6 +12,7 @@ require (
 	github.com/go-playground/validator/v10 v10.11.2
 	github.com/google/uuid v1.3.0
 	github.com/jmoiron/sqlx v1.3.5
+	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.7
 	go.mongodb.org/mongo-driver v1.11.3
 	go.uber.org/zap v1.24.0

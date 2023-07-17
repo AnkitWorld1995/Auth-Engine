@@ -10,3 +10,9 @@ build:
 
 zip:
 	zip -jrm build/Authenication-SVC.zip build/Authenication-SVC
+
+compose-up-dynamo:
+	docker-compose up -d dynamodb-local
+
+compose-down:
+	docker-compose down

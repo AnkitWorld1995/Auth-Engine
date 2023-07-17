@@ -27,7 +27,8 @@ var applicationConfig *AppConfig
 
 func Init()  {
 	var maxGlobalRetry  	= 5
-	var S3Region			= utility.ReadS3Region()
+	var s3Region 			= utility.ReadS3Region()
+	var dynamoDBURL			= utility.ReadDynamoDBURL()
 	userCollection := make(map[string]string)
 	userCollection[constants.MongoCollectionName] = utility.ReadNSQLCollection()
 	appConfig := &AppConfig{
@@ -56,8 +57,9 @@ func Init()  {
 			Realm:        "Authentication-SVC",
 		},
 		AwsConfig: &aws.Config{
-			Region:            &S3Region,
+			Region:            &s3Region,
 			MaxRetries:        &maxGlobalRetry,
+			Endpoint:		   &dynamoDBURL,
 		},
 	}
 	applicationConfig = appConfig

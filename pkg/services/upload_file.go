@@ -13,14 +13,14 @@ import (
 )
 
 type uploadFileServiceClass struct {
-	repo  		domain.UserRepository
-	s3Session  	*session.Session
+	repo       domain.UserRepository
+	AwsSession *session.Session
 }
 
-func NewUploadFileService(s3Session *session.Session,  repo domain.UserRepository) *uploadFileServiceClass {
+func NewUploadFileService(session *session.Session,  repo domain.UserRepository) *uploadFileServiceClass {
 	return &uploadFileServiceClass{
-		s3Session: s3Session,
-		repo: repo,
+		AwsSession: session,
+		repo:       repo,
 	}
 }
 
@@ -45,7 +45,7 @@ func (u *uploadFileServiceClass) Upload(ctx context.Context, inputData *dto.Uplo
 		return nil, appErr
 	}
 
-	s3Response, appErr := domain.S3Upload(u.s3Session, fileBuffer, inputData)
+	s3Response, appErr := domain.S3Upload(u.AwsSession, fileBuffer, inputData)
 	if appErr != nil {
 		logger.Error("Service/Upload/", zap.String("S3 Upload: ERROR", appErr.Message))
 		return nil, appErr
@@ -74,7 +74,7 @@ func (u *uploadFileServiceClass) UploadAll(ctx context.Context, inputData *dto.U
 		return nil,  errs.NewUnexpectedError(err.Error())
 	}
 
-	response, appErr := domain.S3MultiUpload(u.s3Session, inputData)
+	response, appErr := domain.S3MultiUpload(u.AwsSession, inputData)
 	if appErr != nil {
 		logger.Error("Service/UploadAll/", zap.String("S3MultiUpload: ERROR", appErr.Message))
 		return nil, appErr

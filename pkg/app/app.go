@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/chsys/userauthenticationengine/config"
 	_ "github.com/chsys/userauthenticationengine/pkg/client/db"
 	"github.com/chsys/userauthenticationengine/pkg/domain"
@@ -45,13 +46,15 @@ func StartApp(config *config.AppConfig, router *gin.Engine)  *gin.Engine {
 
 	//keyCloakMiddleware:= sso.KeyCloakMiddleware{Keycloak: config.KeyCloak}
 
-	// Start an AWS S3 Session
-	newS3Session, err := session.NewSession(config.AwsConfig)
+	// Start an AWS Session
+	newAWSSession, err := session.NewSession(config.AwsConfig)
 	if err != nil {
 		log.Fatalln(fmt.Sprintf("Failed to Create a New S3 Session  with Error %s: ", err.Error()))
 	}
-	log.Println("------- config AWS-----------", *config.AwsConfig.Region, newS3Session.Config.Region)
+	log.Println("------- config AWS-----------", *config.AwsConfig.Region, newAWSSession.Config.Region)
 
+	// Start an AWS DynamoDB Session
+	newDynamoDBSession := dynamodb.New(newAWSSession, newAWSSession.Config)
 
 	/*
 		Registering A Middleware.
@@ -66,7 +69,7 @@ func StartApp(config *config.AppConfig, router *gin.Engine)  *gin.Engine {
 	router.Handle(http.MethodGet, "/ping2", pingHandler.Ping2())
 	router.Handle(http.MethodGet, "/test2", pingHandler.Test())
 
-	uploadHandler := handler.UploadHandler{UploadFileService: services.NewUploadFileService(newS3Session, domain.NewUserRepoClass(nil, nil, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection, config.AwsConfig))}
+	uploadHandler := handler.UploadHandler{UploadFileService: services.NewUploadFileService(newAWSSession, domain.NewUserRepoClass(nil, nil, config.RdmsDB.Schema, config.MongoDB.Database, config.MongoDB.UserCollection, newDynamoDBSession))}
 	router.Handle(http.MethodPost, "/upload", uploadHandler.UploadFileToS3())
 	router.Handle(http.MethodPost, "/upload-All", uploadHandler.UploadAllFileToS3())
 

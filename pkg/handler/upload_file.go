@@ -13,7 +13,6 @@ type UploadHandler struct {
 
 func (u *UploadHandler) UploadFileToS3() gin.HandlerFunc{
 	return func(ctx *gin.Context) {
-
 		// FormFile returns the first formFile for the provided form key
 		formFile, fileHeader, err := ctx.Request.FormFile("file")
 		if err != nil {

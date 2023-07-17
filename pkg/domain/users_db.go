@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/chsys/userauthenticationengine/pkg/dto"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"github.com/chsys/userauthenticationengine/pkg/lib/logger"
@@ -18,17 +18,17 @@ type UserRepoClass struct {
 	dbSchema      string
 	nosqlDatabase string
 	collection    map[string]string
-	awsConfig 	  *aws.Config
+	dynamoDB 	  *dynamodb.DynamoDB
 }
 
-func NewUserRepoClass(rdbClient *sql.DB, mdbClient *mongo.Client, sqlSchema, nosqlDatabase string, collection map[string]string, awsConfig *aws.Config) *UserRepoClass {
+func NewUserRepoClass(rdbClient *sql.DB, mdbClient *mongo.Client, sqlSchema, nosqlDatabase string, collection map[string]string, dynoSess *dynamodb.DynamoDB) *UserRepoClass {
 	return &UserRepoClass{
 		db:            rdbClient,
 		mongo:         mdbClient,
 		dbSchema:      sqlSchema,
 		nosqlDatabase: nosqlDatabase,
 		collection:    collection,
-		awsConfig: 	   awsConfig,
+		dynamoDB: 	   dynoSess,
 	}
 }
 
