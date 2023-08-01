@@ -3,13 +3,13 @@ package dto
 import "mime/multipart"
 
 type UploadFileResp struct {
-	Message 	string
-	Data 		map[string]interface{}
+	Message string
+	Data    map[string]interface{}
 }
 
 type MultiUploadFileResp struct {
-	Message 	string
-	Data 		[]struct {
+	Message string
+	Data    []struct {
 		UniqueID         string `json:"unique_id"`
 		FileName         string `json:"file_name"`
 		FileSize         int64  `json:"file_size"`
@@ -21,12 +21,10 @@ type MultiUploadFileResp struct {
 }
 
 type UploadFileInput struct {
-	File 		multipart.File `json:"file,omitempty" validate:"required"`
-	FileHeader 	multipart.FileHeader `json:"file_header" validate:"required"`
+	File       multipart.File       `json:"file,omitempty" validate:"required"`
+	FileHeader multipart.FileHeader `json:"file_header" validate:"required"`
 }
 
 type UploadFileListInput struct {
-	FileHeader 	[]*multipart.FileHeader `json:"file_header" validate:"required"`
+	FileHeader []*multipart.FileHeader `json:"file_header" validate:"required"`
 }
-
-
