@@ -60,8 +60,8 @@ func ReadNSQLCollection() string {
 	return NoSqlDbCollection
 }
 
-func ReadS3Region() string {
-	s3Region := os.Getenv(constants.GetS3Region)
+func ReadAwsRegion() string {
+	s3Region := os.Getenv(constants.GetAwsRegion)
 	return s3Region
 }
 

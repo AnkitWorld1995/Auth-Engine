@@ -15,30 +15,29 @@ import (
 	Configuration Package.
 */
 
-
 type AppConfig struct {
-	RdmsDB	 *db.PostgresConfig
-	MongoDB  *db.MongoConfig
-	KeyCloak *sso.KeyCloak
+	RdmsDB    *db.PostgresConfig
+	MongoDB   *db.MongoConfig
+	KeyCloak  *sso.KeyCloak
 	AwsConfig *aws.Config
 }
 
 var applicationConfig *AppConfig
 
-func Init()  {
-	var maxGlobalRetry  	= 5
-	var s3Region 			= utility.ReadS3Region()
-	var dynamoDBURL			= utility.ReadDynamoDBURL()
+func Init() {
+	var maxGlobalRetry = 5
+	var s3Region = utility.ReadAwsRegion()
+	var dynamoDBURL = utility.ReadDynamoDBURL()
 	userCollection := make(map[string]string)
 	userCollection[constants.MongoCollectionName] = utility.ReadNSQLCollection()
 	appConfig := &AppConfig{
-		RdmsDB:  &db.PostgresConfig{
-			Host:     	utility.ReadRDBHost(),
-			Port:     	utility.ReadRDBPort(),
-			Username: 	utility.ReadRDBUser(),
-			Password: 	utility.ReadRDBPassword(),
-			Schema: 	utility.ReadRDBSchema(),
-			Database: 	utility.ReadRDB(),
+		RdmsDB: &db.PostgresConfig{
+			Host:     utility.ReadRDBHost(),
+			Port:     utility.ReadRDBPort(),
+			Username: utility.ReadRDBUser(),
+			Password: utility.ReadRDBPassword(),
+			Schema:   utility.ReadRDBSchema(),
+			Database: utility.ReadRDB(),
 		},
 		MongoDB: &db.MongoConfig{
 			Host:            utility.ReadNSQLHost(),
@@ -57,20 +56,20 @@ func Init()  {
 			Realm:        "Authentication-SVC",
 		},
 		AwsConfig: &aws.Config{
-			Region:            &s3Region,
-			MaxRetries:        &maxGlobalRetry,
-			Endpoint:		   &dynamoDBURL,
+			Region:     &s3Region,
+			MaxRetries: &maxGlobalRetry,
+			Endpoint:   &dynamoDBURL,
 		},
 	}
 	applicationConfig = appConfig
 	fmt.Printf("The value Of App Config :== %v+\n", applicationConfig.AwsConfig)
 }
 
-func AppConfigs() *AppConfig{
+func AppConfigs() *AppConfig {
 	if applicationConfig == nil {
 		fmt.Printf("The Application Configured is Empty. Value is %v", applicationConfig)
 		log.Fatalln("Failed to Initialize Config Variables.")
 	}
-	log.Println("Config",applicationConfig.RdmsDB)
+	log.Println("Config", applicationConfig.RdmsDB)
 	return applicationConfig
 }
