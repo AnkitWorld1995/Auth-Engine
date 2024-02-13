@@ -10,8 +10,8 @@ services:
     container_name: keycloak
     image: jboss/keycloak
     environment:
-      - KEYCLOAK_USER=admin
-      - KEYCLOAK_PASSWORD=admin
+      - KEYCLOAK_USER=username
+      - KEYCLOAK_PASSWORD=password
 
 networks:
   mm:
