@@ -8,29 +8,29 @@ import (
 )
 
 type RequestValidation struct {
-	Repo domain.UserRepository
+	Repo domain.IRepository
 }
 
 type RequestValidationInterface interface {
-	ValidatePassword(ctx context.Context,password, condition string) (bool,*errs.AppError)
+	ValidatePassword(ctx context.Context, password, condition string) (bool, *errs.AppError)
 	ValidateUserName(ctx context.Context, userName string) (bool, *errs.AppError)
 	ValidateEmail(ctx context.Context, email string) (bool, *errs.AppError)
 	ValidateUserID(ctx context.Context, userID int) (bool, *errs.AppError)
 }
 
-func(r *RequestValidation) ValidateUserID(ctx context.Context, userID int) (bool, *errs.AppError) {
+func (r *RequestValidation) ValidateUserID(ctx context.Context, userID int) (bool, *errs.AppError) {
 	return r.Repo.FindByUserId(ctx, &userID)
 }
 
 func (r *RequestValidation) ValidateUserName(ctx context.Context, userName string) (bool, *errs.AppError) {
-	return  r.Repo.FindByUserName(ctx, userName)
+	return r.Repo.FindByUserName(ctx, userName)
 }
 
 func (r *RequestValidation) ValidateEmail(ctx context.Context, email string) (bool, *errs.AppError) {
-	return  r.Repo.FindByEmail(ctx, utility.ParseMail(email))
+	return r.Repo.FindByEmail(ctx, utility.ParseMail(email))
 }
 
-func (r *RequestValidation) ValidatePassword(ctx context.Context,password, condition string) (bool,*errs.AppError) {
+func (r *RequestValidation) ValidatePassword(ctx context.Context, password, condition string) (bool, *errs.AppError) {
 	orgPassword, err := r.Repo.GetPassword(ctx, &condition)
 	if err != nil {
 		return false, err

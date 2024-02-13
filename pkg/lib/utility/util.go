@@ -20,22 +20,24 @@ import (
 	"unicode"
 )
 
-
-
 var accountType map[string]string
+var dynamoDBTable map[string]bool
 
 func init() {
 	userAccountType := make(map[string]string, 3)
-	userAccountType[constants.Root] 	  = constants.RootAdminAccountType
-	userAccountType[constants.User]  	  = constants.UserAccountType
-	userAccountType[constants.SalesRoot]  = constants.SalesAdminAccountType
+	userAccountType[constants.Root] = constants.RootAdminAccountType
+	userAccountType[constants.User] = constants.UserAccountType
+	userAccountType[constants.SalesRoot] = constants.SalesAdminAccountType
 
+	dynamoDbNameMap := make(map[string]bool, 1)
+	dynamoDbNameMap[constants.DynamoDBS3UploadTable] = true
+
+	dynamoDBTable = dynamoDbNameMap
 	accountType = userAccountType
 }
 
-
 type primitives struct {
-	cond 	*sync.Cond
+	cond *sync.Cond
 }
 
 func GenHashAndSaltPassword(password string) (string, *errs.AppError) {
@@ -95,16 +97,13 @@ func PasswordValidator(password string, isSignIn bool) *errs.AppError {
 
 }
 
-
 func MapUserAccountType(userType string) (string, *errs.AppError) {
 	if accountType, ok := accountType[strings.ToLower(userType)]; !ok {
-		return "",errs.NewValidationError("Incorrect Account Type. User account Type Must be Either Sales Root A/C | Root Admin A/C | User A/C")
-	}else{
+		return "", errs.NewValidationError("Incorrect Account Type. User account Type Must be Either Sales Root A/C | Root Admin A/C | User A/C")
+	} else {
 		return accountType, nil
 	}
 }
-
-
 
 var table = [...]byte{'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'}
 
@@ -144,7 +143,7 @@ func MakeByte(str string) []byte {
 	return newByte
 }
 
-func JoinChannelError(err chan error) error{
+func JoinChannelError(err chan error) error {
 	if len(err) > 0 {
 		var newErr []error
 		for e := range err {
@@ -152,7 +151,23 @@ func JoinChannelError(err chan error) error{
 		}
 		err2 := errors.Join(newErr...)
 		return err2
-	}else {
+	} else {
 		return nil
+	}
+}
+
+func MapTableName(tableNames []string) bool {
+	sizeOfTable := len(tableNames)
+	checkNameCount := 0
+
+	for _, name := range tableNames {
+		if ifExist, _ := dynamoDBTable[name]; ifExist {
+			checkNameCount++
+		}
+	}
+	if sizeOfTable == checkNameCount {
+		return true
+	} else {
+		return false
 	}
 }

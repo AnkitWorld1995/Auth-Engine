@@ -17,17 +17,16 @@ import (
 )
 
 type userServiceClass struct {
-	repo  domain.UserRepository
-	valid mapper.RequestValidationInterface
+	repo     domain.IRepository
+	valid    mapper.RequestValidationInterface
 	keyCloak sso.KeyCloakMiddleware
 }
 
-
-func NewUserServiceClass(repo domain.UserRepository, keyCloakClient sso.KeyCloakMiddleware) *userServiceClass {
+func NewUserServiceClass(repo domain.IRepository, keyCloakClient sso.KeyCloakMiddleware) *userServiceClass {
 	return &userServiceClass{repo: repo, valid: &mapper.RequestValidation{
 		Repo: repo,
 	},
-	keyCloak: keyCloakClient,
+		keyCloak: keyCloakClient,
 	}
 }
 
@@ -40,8 +39,6 @@ type UserService interface {
 	ResetPassword(ctx context.Context, request *dto.ResetPasswordRequest) (*dto.GenericResponse, *errs.AppError)
 }
 
-
-
 func (u *userServiceClass) SignUp(ctx context.Context, request dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError) {
 	err := request.SignUpValidate()
 	if err != nil {
@@ -49,12 +46,12 @@ func (u *userServiceClass) SignUp(ctx context.Context, request dto.SignUpRequest
 	}
 
 	emailExist, err := u.valid.ValidateEmail(ctx, strings.TrimSpace(request.Email))
-	if emailExist || (err != nil  && err.Code != http.StatusNotFound) {
+	if emailExist || (err != nil && err.Code != http.StatusNotFound) {
 		return nil, errs.NewValidationError("Email already exist")
 	}
 
 	usernameExist, err := u.valid.ValidateUserName(ctx, request.UserName)
-	if usernameExist || (err != nil  && err.Code != http.StatusNotFound) {
+	if usernameExist || (err != nil && err.Code != http.StatusNotFound) {
 		return nil, errs.NewValidationError("user already exist")
 	}
 
@@ -66,16 +63,15 @@ func (u *userServiceClass) SignUp(ctx context.Context, request dto.SignUpRequest
 	return resp, nil
 }
 
-
 /*
-	Note: Decommission SignIn Method if SSO-LogIn and Get-User Method IS Fully Up and Functional.
+Note: Decommission SignIn Method if SSO-LogIn and Get-User Method IS Fully Up and Functional.
 */
-func (u *userServiceClass) SignIn(ctx context.Context, request *dto.SignInRequest) (*dto.SignInResponse, *errs.AppError){
+func (u *userServiceClass) SignIn(ctx context.Context, request *dto.SignInRequest) (*dto.SignInResponse, *errs.AppError) {
 	err := request.SignInValidate()
 	if err != nil {
 		return nil, err
 	}
-	_, err = u.valid.ValidateUserName(ctx,  request.UserName)
+	_, err = u.valid.ValidateUserName(ctx, request.UserName)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +81,7 @@ func (u *userServiceClass) SignIn(ctx context.Context, request *dto.SignInReques
 		return nil, err
 	}
 
-	userDetails, err :=  u.repo.GetUser(ctx, nil ,&request.UserName, &request.Email)
+	userDetails, err := u.repo.GetUser(ctx, nil, &request.UserName, &request.Email)
 	if err != nil {
 		logger.Debug(err.Message)
 		return nil, errs.NewUnexpectedError(err.Message)
@@ -97,22 +93,21 @@ func (u *userServiceClass) SignIn(ctx context.Context, request *dto.SignInReques
 func (u *userServiceClass) SSOSignIn(ctx *gin.Context, request dto.SSOSignInRequest) (*dto.SSOSignInResponse, *errs.AppError) {
 	appErr := request.SSOSignInValidation()
 	if appErr != nil {
-		return nil,appErr
+		return nil, appErr
 	}
 
 	var (
 		respData domain.JWT
 	)
 
-
-	Valid , appErr := u.keyCloak.VerifyJWTToken(ctx, request.AuthToken)
+	Valid, appErr := u.keyCloak.VerifyJWTToken(ctx, request.AuthToken)
 	if appErr != nil || !Valid {
 		log.Println("Service: GetUserById API ERROR", appErr)
 		return nil, appErr
 	}
 
 	claims, appErr := u.keyCloak.GetClaims(ctx, request.AuthToken)
-	if appErr != nil  {
+	if appErr != nil {
 		log.Println("Service: GetUserById API ERROR", appErr)
 		return nil, appErr
 	}
@@ -123,16 +118,16 @@ func (u *userServiceClass) SSOSignIn(ctx *gin.Context, request dto.SSOSignInRequ
 	for roleIdx, role := range respData.RealmAccess.Roles {
 		if roleIdx <= roleSize && role == "admin-role" {
 			break
-		}else if roleIdx < roleSize && role != "admin-role" {
+		} else if roleIdx < roleSize && role != "admin-role" {
 			continue
-		}else {
+		} else {
 			return nil, errs.NewForbiddenRequest("Un-Authorized access. User is not Admin.")
 		}
 	}
 
 	_, appErr = u.valid.ValidateUserName(ctx, respData.PreferredUsername)
 	if appErr != nil {
-		return nil,errs.NewValidationError(appErr.Message)
+		return nil, errs.NewValidationError(appErr.Message)
 	}
 
 	_, appErr = u.valid.ValidateEmail(ctx, respData.Email)
@@ -150,7 +145,6 @@ func (u *userServiceClass) SSOSignIn(ctx *gin.Context, request dto.SSOSignInRequ
 		return nil, errs.NewValidationError(appErr.Message)
 	}
 
-
 	respData.SetTokenDetails(*tokenDetails)
 	resp := respData.SSOJWTDetails()
 	return resp, nil
@@ -163,11 +157,11 @@ func (u *userServiceClass) GetUserById(ctx *gin.Context, request dto.GetUserById
 	}
 
 	validID, appErr := u.valid.ValidateUserID(ctx, request.UserID)
-	if !validID || (appErr !=nil && appErr.Code == http.StatusNotFound) {
+	if !validID || (appErr != nil && appErr.Code == http.StatusNotFound) {
 		return nil, errs.NewValidationError("User ID Not Found. Invalid User ID")
 	}
 
-	userDetails, appErr :=  u.repo.GetUser(ctx, &request.UserID, request.UserName, request.Email)
+	userDetails, appErr := u.repo.GetUser(ctx, &request.UserID, request.UserName, request.Email)
 	if appErr != nil {
 		logger.Debug(appErr.Message)
 		return nil, errs.NewUnexpectedError(appErr.Message)
@@ -177,7 +171,7 @@ func (u *userServiceClass) GetUserById(ctx *gin.Context, request dto.GetUserById
 	return resp, nil
 }
 
-func(u *userServiceClass) CreateUser(ctx context.Context, request *dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError) {
+func (u *userServiceClass) CreateUser(ctx context.Context, request *dto.SignUpRequest) (*dto.SignUpResponse, *errs.AppError) {
 
 	hashedPassword, err := utility.GenHashAndSaltPassword(request.Password)
 	if stringUtils.IsBlank(hashedPassword) && err != nil {
@@ -185,7 +179,7 @@ func(u *userServiceClass) CreateUser(ctx context.Context, request *dto.SignUpReq
 		return nil, errs.NewValidationError(err.Message)
 	}
 
-	newUser := domain.CreateNewUser(request.UserName, request.FirstName, request.LastName, hashedPassword, utility.ParseMail(request.Email), request.UserType ,request.Address ,request.PhoneNumber, false )
+	newUser := domain.CreateNewUser(request.UserName, request.FirstName, request.LastName, hashedPassword, utility.ParseMail(request.Email), request.UserType, request.Address, request.PhoneNumber, false)
 	userDetails, err := u.repo.SaveUser(ctx, newUser)
 	if err != nil {
 		logger.Debug(err.Message)
@@ -200,30 +194,30 @@ func (u *userServiceClass) ResetPassword(ctx context.Context, request *dto.Reset
 	err := request.RestPasswordValidation()
 	if err != nil {
 		return &dto.GenericResponse{
-				Success: false,
-				Message: err.Message,
+			Success: false,
+			Message: err.Message,
 		}, err
 	}
 
 	samePassword, err := u.valid.ValidatePassword(ctx, request.NewPassword, request.Email)
 	if err != nil && err.Code != http.StatusUnprocessableEntity {
 		return &dto.GenericResponse{
-				Success: false,
-				Message: err.Message,
-		},  errs.NewValidationError(err.Message)
-	}else if samePassword && err == nil{
+			Success: false,
+			Message: err.Message,
+		}, errs.NewValidationError(err.Message)
+	} else if samePassword && err == nil {
 		return &dto.GenericResponse{
 			Success: false,
 			Message: "Sorry! Cannot Use Same old Password.",
-		},  errs.NewValidationError("Sorry! Cannot Use Same old Password.")
+		}, errs.NewValidationError("Sorry! Cannot Use Same old Password.")
 	}
 
 	hashedPassword, err := utility.GenHashAndSaltPassword(request.NewPassword)
 	if stringUtils.IsBlank(hashedPassword) && err != nil {
 		logger.Debug(err.Message)
 		return &dto.GenericResponse{
-				Success: false,
-				Message: err.Message,
+			Success: false,
+			Message: err.Message,
 		}, errs.NewValidationError(err.Message)
 	}
 	// Update the Same In Database.

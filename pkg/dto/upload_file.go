@@ -1,30 +1,43 @@
 package dto
 
-import "mime/multipart"
+import (
+	"mime/multipart"
+)
 
 type UploadFileResp struct {
-	Message 	string
-	Data 		map[string]interface{}
+	Message string
+	Data    map[string]interface{}
 }
 
-type MultiUploadFileResp struct {
-	Message 	string
-	Data 		[]struct {
-		UniqueID         string `json:"unique_id"`
-		FileName         string `json:"file_name"`
-		FileSize         int64  `json:"file_size"`
-		URL              string `json:"url"`
-		Mime             string `json:"mime"`
-		Ext              string `json:"ext"`
-		DataStreamSHA256 string `json:"data_stream_sha_256"`
-	}
+type MultiUploadFileReq struct {
+	UniqueID         string `json:"UniqueID"`
+	FileName         string `json:"FileName"`
+	FileSize         int64  `json:"FileSize"`
+	URL              string `json:"URL"`
+	Mime             string `json:"Mime"`
+	Ext              string `json:"Ext"`
+	DataStreamSHA256 string `json:"DataStreamSHA256"`
 }
 
 type UploadFileInput struct {
-	File 		multipart.File `json:"file,omitempty" validate:"required"`
-	FileHeader 	multipart.FileHeader `json:"file_header" validate:"required"`
+	File       multipart.File       `json:"file,omitempty" validate:"required"`
+	FileHeader multipart.FileHeader `json:"file_header" validate:"required"`
 }
 
 type UploadFileListInput struct {
-	FileHeader 	[]*multipart.FileHeader `json:"file_header" validate:"required"`
+	FileHeader []*multipart.FileHeader `json:"file_header" validate:"required"`
+}
+
+type UploadFileMetaDataResp struct {
+	UniqueID         string
+	FileName         string
+	FileSize         int64
+	URL              string
+	Mime             string
+	Ext              string
+	DataStreamSHA256 string
+}
+
+type UploadFileMetaDataListResp struct {
+	FileMetaList []*UploadFileMetaDataResp
 }

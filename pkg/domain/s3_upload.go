@@ -22,69 +22,77 @@ import (
 	"time"
 )
 
-type UploadFileMetaData struct {
-	UniqueID 			string 	`json:"unique_id"`
-	FileName 			string 	`json:"file_name"`
-	FileSize 			int64   `json:"file_size"`
-	URL             	string  `json:"url"`
-	Mime             	string  `json:"mime"`
-	Ext              	string  `json:"ext"`
-	DataStreamSHA256 	string  `json:"data_stream_sha_256"`
-}
-
 type UploadFileDBResponse struct {
-	UploadedID 			string  `json:"uploaded_id"`
-	URL 				string  `json:"url"`
+	UploadedID string `json:"uploaded_id"`
+	URL        string `json:"url"`
 }
 
 type MultiPartFileData struct {
-	FileName 			*string   `json:"file_name"`
-	FileSize 			*int64	  `json:"file_size"`
-	FileBufferByte 		*[]byte   `json:"file_buffer_byte"`
+	FileName       *string `json:"file_name"`
+	FileSize       *int64  `json:"file_size"`
+	FileBufferByte *[]byte `json:"file_buffer_byte"`
 }
 
-
-
-
-func S3Upload(sess *session.Session, buffer *bytes.Buffer, inputData *dto.UploadFileInput) (*UploadFileMetaData, *errs.AppError) {
-	// Config settings: this is where you choose the bucket, filename, content-type etc.
-	// of the file you're uploading.
-	_ , err := s3.New(sess).PutObject(&s3.PutObjectInput{
-		Bucket:               aws.String(utility.ReadS3Bucket()),
-		Key:                  aws.String(inputData.FileHeader.Filename),
-		ACL:                  aws.String("private"),
-		Body:                 bytes.NewReader(buffer.Bytes()),
-		ContentLength:        aws.Int64(inputData.FileHeader.Size),
-		ContentType:          aws.String(http.DetectContentType(buffer.Bytes())),
-		ContentDisposition:   aws.String("attachment"),
-		ServerSideEncryption: aws.String("AES256"),
-	})
-	if err != nil {
-		logger.Error("Service/Upload/", zap.String("S3 Upload: ERROR", err.Error()))
-		return nil, errs.NewValidationError(err.Error())
-	}
-
-	req, _ := s3.New(sess).GetObjectRequest(&s3.GetObjectInput{
-		Bucket: aws.String(utility.ReadS3Bucket()),
-		Key:    aws.String(inputData.FileHeader.Filename),
-	})
-	rest.Build(req)
-	uploadedResourceLocation := req.HTTPRequest.URL.String()
-
-	resp := UploadFileMetaData{
-		UniqueID:         uuid.New().String(),
-		FileName:         inputData.FileHeader.Filename,
-		FileSize:         inputData.FileHeader.Size,
-		URL:              uploadedResourceLocation,
-		DataStreamSHA256: utility.SingleSHA(buffer.Bytes()),
-		Ext:              strings.Split(inputData.FileHeader.Filename, ".")[1],
-		Mime:             http.DetectContentType(buffer.Bytes()),
-	}
-
-	return &resp, nil
+type UploadFileMetaData struct {
+	UniqueID         string `json:"UniqueID"`
+	FileName         string `json:"FileName"`
+	FileSize         int64  `json:"FileSize"`
+	URL              string `json:"URL"`
+	Mime             string `json:"Mime"`
+	Ext              string `json:"Ext"`
+	DataStreamSHA256 string `json:"DataStreamSHA256"`
 }
 
-func S3MultiUpload(sess *session.Session, inputData *dto.UploadFileListInput) ([]*UploadFileMetaData,*errs.AppError) {
+type UploadFileMetaResp struct {
+	DataStreamSHA256 string
+	Ext              string
+	FileName         string
+	FileSize         int64
+	Mime             string
+	URL              string
+	UniqueID         string
+}
+
+func (r *UploadFileMetaData) DTO() *dto.UploadFileMetaDataResp {
+	return &dto.UploadFileMetaDataResp{
+		UniqueID:         r.UniqueID,
+		FileName:         r.FileName,
+		FileSize:         r.FileSize,
+		URL:              r.URL,
+		Mime:             r.Mime,
+		Ext:              r.Ext,
+		DataStreamSHA256: r.DataStreamSHA256,
+	}
+}
+
+type UploadFileMetaList struct {
+	MetaUnmarshalList *[]UploadFileMetaResp
+}
+
+func (r *UploadFileMetaList) DTO() *dto.UploadFileMetaDataListResp {
+
+	if r.MetaUnmarshalList == nil {
+		return &dto.UploadFileMetaDataListResp{}
+	} else {
+
+		metaFileList := make([]*dto.UploadFileMetaDataResp, 0, len(*r.MetaUnmarshalList))
+		for _, metaFile := range *r.MetaUnmarshalList {
+			uploadMetaFile := dto.UploadFileMetaDataResp{
+				UniqueID:         metaFile.UniqueID,
+				FileName:         metaFile.FileName,
+				FileSize:         metaFile.FileSize,
+				URL:              metaFile.URL,
+				Mime:             metaFile.Mime,
+				Ext:              metaFile.Ext,
+				DataStreamSHA256: metaFile.DataStreamSHA256,
+			}
+			metaFileList = append(metaFileList, &uploadMetaFile)
+		}
+		return &dto.UploadFileMetaDataListResp{FileMetaList: metaFileList}
+	}
+}
+
+func S3MultiUpload(sess *session.Session, inputData *dto.UploadFileListInput) ([]*UploadFileMetaData, *errs.AppError) {
 	// Convert the File Stored In String into []Byte.
 
 	start := time.Now()
@@ -94,10 +102,10 @@ func S3MultiUpload(sess *session.Session, inputData *dto.UploadFileListInput) ([
 	var wg sync.WaitGroup
 	var mux sync.RWMutex
 
-	for _, fileHeader := range inputData.FileHeader{
+	for _, fileHeader := range inputData.FileHeader {
 		var fileData MultiPartFileData
 		wg.Add(1)
-		go func(fileData *MultiPartFileData, mux *sync.RWMutex,fileHeader *multipart.FileHeader) {
+		go func(fileData *MultiPartFileData, mux *sync.RWMutex, fileHeader *multipart.FileHeader) {
 			defer wg.Done()
 			fileOut, err := fileHeader.Open()
 			if err != nil {
@@ -118,11 +126,11 @@ func S3MultiUpload(sess *session.Session, inputData *dto.UploadFileListInput) ([
 			fileBufferLst = append(fileBufferLst, fileData)
 			mux.Unlock()
 
-		}(&fileData, &mux,fileHeader)
+		}(&fileData, &mux, fileHeader)
 	}
 	wg.Wait()
 
-	resp, err := multiUpload(sess,fileBufferLst, start)
+	resp, err := multiUpload(sess, fileBufferLst, start)
 	if err != nil {
 		logger.Error("Service/S3-Multi-Upload/", zap.String("S3 Multi-Upload: ERROR", err.Message))
 		return nil, errs.NewValidationError(err.Message)
@@ -130,17 +138,16 @@ func S3MultiUpload(sess *session.Session, inputData *dto.UploadFileListInput) ([
 	return resp, nil
 }
 
-func multiUpload(sess *session.Session, fileDataList []*MultiPartFileData, start time.Time) ([]*UploadFileMetaData,*errs.AppError) {
+func multiUpload(sess *session.Session, fileDataList []*MultiPartFileData, start time.Time) ([]*UploadFileMetaData, *errs.AppError) {
 	// Config settings: this is where you choose the bucket, filename, content-type etc.
 	// of the file you're uploading.
-
 
 	//Concurrent Code
 	var wg sync.WaitGroup
 	var mux sync.RWMutex
-	mapFileNameURL 	:= make(map[string]string)
-	uploadSuccess 	:= make(chan bool)
-	errChan 		:= make(chan error, 2)
+	mapFileNameURL := make(map[string]string)
+	uploadSuccess := make(chan bool)
+	errChan := make(chan error, 2)
 
 	for _, fileRawValue := range fileDataList {
 
@@ -168,7 +175,7 @@ func multiUpload(sess *session.Session, fileDataList []*MultiPartFileData, start
 		}(fileRawValue)
 
 		go func(mux *sync.RWMutex, fileRawValue *MultiPartFileData) {
-			if <- uploadSuccess {
+			if <-uploadSuccess {
 				log.Println("Entering The 2st Go")
 				req, _ := s3.New(sess).GetObjectRequest(&s3.GetObjectInput{
 					Bucket: aws.String(utility.ReadS3Bucket()),
@@ -199,9 +206,8 @@ func multiUpload(sess *session.Session, fileDataList []*MultiPartFileData, start
 		return nil, &newError
 	}
 
-
 	s3RespObject := make([]*UploadFileMetaData, len(fileDataList))
-	for _, fileDataResp := range fileDataList{
+	for _, fileDataResp := range fileDataList {
 		wg.Add(1)
 		go func(fileDataResp *MultiPartFileData, mux *sync.RWMutex) {
 			defer wg.Done()

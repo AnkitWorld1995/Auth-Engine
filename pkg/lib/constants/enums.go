@@ -15,4 +15,5 @@ const (
 	GetAwsRegion          string = "S3_REGION"
 	GetS3Bucket           string = "S3_BUCKET"
 	GetDynamoDBUrl        string = "DYNO_DB_URL"
+	DynamoDBS3UploadTable string = "S3_UPLOAD"
 )

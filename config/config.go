@@ -27,7 +27,7 @@ var applicationConfig *AppConfig
 func Init() {
 	var maxGlobalRetry = 5
 	var s3Region = utility.ReadAwsRegion()
-	var dynamoDBURL = utility.ReadDynamoDBURL()
+	//var dynamoDBURL = utility.ReadDynamoDBURL()
 	userCollection := make(map[string]string)
 	userCollection[constants.MongoCollectionName] = utility.ReadNSQLCollection()
 	appConfig := &AppConfig{
@@ -58,7 +58,7 @@ func Init() {
 		AwsConfig: &aws.Config{
 			Region:     &s3Region,
 			MaxRetries: &maxGlobalRetry,
-			Endpoint:   &dynamoDBURL,
+			//Endpoint:   &dynamoDBURL,
 		},
 	}
 	applicationConfig = appConfig
@@ -68,7 +68,7 @@ func Init() {
 func AppConfigs() *AppConfig {
 	if applicationConfig == nil {
 		fmt.Printf("The Application Configured is Empty. Value is %v", applicationConfig)
-		log.Fatalln("Failed to Initialize Config Variables.")
+		Init()
 	}
 	log.Println("Config", applicationConfig.RdmsDB)
 	return applicationConfig

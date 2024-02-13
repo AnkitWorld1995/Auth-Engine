@@ -16,27 +16,27 @@ import (
 
 const (
 	postgresDriver = "postgres"
-	mongoDriver	   = "mongodb"
+	mongoDriver    = "mongodb"
 )
 
 type PostgresConfig struct {
-	Host 		string
-	Port		string
-	Username 	string
-	Password	string
-	Schema		string
-	Database	string
+	Host     string
+	Port     string
+	Username string
+	Password string
+	Schema   string
+	Database string
 }
 
 type MongoConfig struct {
-	Host                   string
-	Port                   string
-	Username               string
-	Password               string
-	MaxPool                string
-	Database               string
-	UserCollection         map[string]string
-	AdminCollection        map[string]string
+	Host            string
+	Port            string
+	Username        string
+	Password        string
+	MaxPool         string
+	Database        string
+	UserCollection  map[string]string
+	AdminCollection map[string]string
 }
 
 func RdmsInit(config *PostgresConfig) (*sql.DB, error) {
@@ -44,8 +44,8 @@ func RdmsInit(config *PostgresConfig) (*sql.DB, error) {
 	//"postgres://postgres:password@localhost/DB_1?sslmode=disable"
 	//jdbc:postgresql://localhost:5432/postgres
 	log.Println("===>", config.Host, config.Port)
-	dbUrl := fmt.Sprintf("host=%s port=%s user=%s " + "password=%s dbname=%s sslmode=disable",
-		     config.Host, config.Port, config.Username, config.Password, config.Database)
+	dbUrl := fmt.Sprintf("host=%s port=%s user=%s "+"password=%s dbname=%s sslmode=disable",
+		config.Host, config.Port, config.Username, config.Password, config.Database)
 
 	maxOpenConnection, err := strconv.Atoi(os.Getenv("POSTGRES_MAX_CONN"))
 	if err != nil {
@@ -92,7 +92,7 @@ func RdmsInit(config *PostgresConfig) (*sql.DB, error) {
 func MongoInit(dbConfig *MongoConfig) (*mongo.Client, error) {
 	//mongodb://localhost:27017/
 	dataSource := fmt.Sprintf("%s://%s:%s/",
-		mongoDriver,  dbConfig.Host, dbConfig.Port)
+		mongoDriver, dbConfig.Host, dbConfig.Port)
 
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(dataSource))
 	if err != nil {
