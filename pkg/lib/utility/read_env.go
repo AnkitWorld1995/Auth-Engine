@@ -1,6 +1,9 @@
 package utility
 
-import "os"
+import (
+	"github.com/chsys/userauthenticationengine/pkg/lib/constants"
+	"os"
+)
 
 func ReadPort() string {
 	port := os.Getenv("PORT")
@@ -55,4 +58,14 @@ func ReadNSQLDatabase() string {
 func ReadNSQLCollection() string {
 	NoSqlDbCollection := os.Getenv("NOSQL_COLLECTION")
 	return NoSqlDbCollection
+}
+
+func ReadS3Region() string {
+	s3Region := os.Getenv(constants.GetS3Region)
+	return s3Region
+}
+
+func ReadS3Bucket() string {
+	s3Region := os.Getenv(constants.GetS3Bucket)
+	return s3Region
 }

@@ -69,3 +69,28 @@ func CreateNewUser(userName , firstName, lastName, password, email, userType str
 		UpdatedAt: time.Now().UTC().Format(time.RFC822),
 	}
 }
+
+func  GetAllUser(userList []*Users) []*dto.Users {
+
+	var userLst []*dto.Users
+	for _, v := range userList {
+		var users dto.Users
+
+		users.ID			= v.ID
+		users.UserID 		= v.UserID
+		users.UserName 		= v.UserName
+		users.FirstName 	= v.FirstName
+		users.LastName 		= v.LastName
+		users.Email 		= v.Email
+		users.Password 		= v.Password
+		users.Phone 		= v.Phone
+		users.Address 		= v.Address
+		users.IsAdmin 		= v.IsAdmin
+		users.UserType 		= v.UserType
+		users.CreatedAt 	= v.CreatedAt
+		users.UpdatedAt 	= v.UpdatedAt
+
+		userLst = append(userLst, &users)
+	}
+	return userLst
+}

@@ -119,6 +119,30 @@ func (u *UserHandler) GetUserById() gin.HandlerFunc{
 	}
 }
 
+func (u *UserHandler) GetAllUsers() gin.HandlerFunc{
+	return func(ctx *gin.Context) {
+
+		var request dto.AllUsersRequest
+		err := json.NewDecoder(ctx.Request.Body).Decode(&request)
+		if err != nil {
+			if marshallingErr, ok := err.(*json.UnmarshalTypeError); ok {
+				ctx.JSON(http.StatusBadRequest, gin.H{
+					"Message": fmt.Sprintf("The field %s must be a %s", marshallingErr.Field, marshallingErr.Type.String()),
+				})
+				return
+			}
+		}else {
+			user, err := u.UserService.GetAllUser(ctx, &request)
+			if err != nil {
+				ctx.JSON(err.Code, err.Message)
+				return
+			}else {
+				ctx.JSON(http.StatusFound, user)
+				return
+			}
+		}
+	}
+}
 
 func (u *UserHandler) ResetPassword(auth sso.KeyCloakMiddleware) gin.HandlerFunc{
 	return func(ctx *gin.Context) {

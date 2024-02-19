@@ -2,10 +2,11 @@ package domain
 
 import (
 	"context"
+	"log"
+
 	"github.com/chsys/userauthenticationengine/pkg/dto"
 	"github.com/chsys/userauthenticationengine/pkg/lib/constants"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
-	"log"
 )
 
 type JWT struct {
@@ -33,22 +34,22 @@ type JWT struct {
 			Roles []string `json:"roles"`
 		} `json:"account"`
 	} `json:"resource_access"`
-	Token 			  TokenDetails `json:"jwt_details"`
-	Scope 			  string `json:"scope"`
-	Sid               string `json:"sid"`
-	EmailVerified     bool   `json:"email_verified"`
-	Name              string `json:"name"`
-	PreferredUsername string `json:"preferred_username"`
-	GivenName         string `json:"given_name"`
-	FamilyName        string `json:"family_name"`
-	Email             string `json:"email"`
+	Token             TokenDetails `json:"jwt_details"`
+	Scope             string       `json:"scope"`
+	Sid               string       `json:"sid"`
+	EmailVerified     bool         `json:"email_verified"`
+	Name              string       `json:"name"`
+	PreferredUsername string       `json:"preferred_username"`
+	GivenName         string       `json:"given_name"`
+	FamilyName        string       `json:"family_name"`
+	Email             string       `json:"email"`
 }
 
 type TokenDetails struct {
-	AccessToken  		string `json:"accessToken"`
-	RefreshToken 		string `json:"refreshToken"`
-	ExpiresIn    		int    `json:"expiresIn"`
-	RefreshExpiresIn 	int    `json:"refresh_expires_in"`
+	AccessToken      string `json:"accessToken"`
+	RefreshToken     string `json:"refreshToken"`
+	ExpiresIn        int    `json:"expiresIn"`
+	RefreshExpiresIn int    `json:"refresh_expires_in"`
 }
 
 type TokenOptions struct {
@@ -70,35 +71,35 @@ type TokenOptions struct {
 }
 
 type UserInfo struct {
-	Sub                 *string          `json:"sub,omitempty"`
-	Name                *string          `json:"name,omitempty"`
-	GivenName           *string          `json:"given_name,omitempty"`
-	FamilyName          *string          `json:"family_name,omitempty"`
-	MiddleName          *string          `json:"middle_name,omitempty"`
-	Nickname            *string          `json:"nickname,omitempty"`
-	PreferredUsername   *string          `json:"preferred_username,omitempty"`
-	Profile             *string          `json:"profile,omitempty"`
-	Picture             *string          `json:"picture,omitempty"`
-	Website             *string          `json:"website,omitempty"`
-	Email               *string          `json:"email,omitempty"`
-	EmailVerified       *bool            `json:"email_verified,omitempty"`
-	Gender              *string          `json:"gender,omitempty"`
-	ZoneInfo            *string          `json:"zoneinfo,omitempty"`
-	Locale              *string          `json:"locale,omitempty"`
-	PhoneNumber         *string          `json:"phone_number,omitempty"`
-	PhoneNumberVerified *bool            `json:"phone_number_verified,omitempty"`
-	Address  			*struct{
-						Formatted     *string `json:"formatted,omitempty"`
-						StreetAddress *string `json:"street_address,omitempty"`
-						Locality      *string `json:"locality,omitempty"`
-						Region        *string `json:"region,omitempty"`
-						PostalCode    *string `json:"postal_code,omitempty"`
-						Country       *string `json:"country,omitempty"`
+	Sub                 *string `json:"sub,omitempty"`
+	Name                *string `json:"name,omitempty"`
+	GivenName           *string `json:"given_name,omitempty"`
+	FamilyName          *string `json:"family_name,omitempty"`
+	MiddleName          *string `json:"middle_name,omitempty"`
+	Nickname            *string `json:"nickname,omitempty"`
+	PreferredUsername   *string `json:"preferred_username,omitempty"`
+	Profile             *string `json:"profile,omitempty"`
+	Picture             *string `json:"picture,omitempty"`
+	Website             *string `json:"website,omitempty"`
+	Email               *string `json:"email,omitempty"`
+	EmailVerified       *bool   `json:"email_verified,omitempty"`
+	Gender              *string `json:"gender,omitempty"`
+	ZoneInfo            *string `json:"zoneinfo,omitempty"`
+	Locale              *string `json:"locale,omitempty"`
+	PhoneNumber         *string `json:"phone_number,omitempty"`
+	PhoneNumberVerified *bool   `json:"phone_number_verified,omitempty"`
+	Address             *struct {
+		Formatted     *string `json:"formatted,omitempty"`
+		StreetAddress *string `json:"street_address,omitempty"`
+		Locality      *string `json:"locality,omitempty"`
+		Region        *string `json:"region,omitempty"`
+		PostalCode    *string `json:"postal_code,omitempty"`
+		Country       *string `json:"country,omitempty"`
 	} `json:"address,omitempty"`
-	UpdatedAt           *int             `json:"updated_at,omitempty"`
+	UpdatedAt *int `json:"updated_at,omitempty"`
 }
 
-func (r *JWT) GetUserClaims(claimsMap dto.MapClaims)  {
+func (r *JWT) GetUserClaims(claimsMap dto.MapClaims) {
 	for key, value := range claimsMap {
 		if key == "exp" {
 			r.Exp = value.(float64)
@@ -110,12 +111,12 @@ func (r *JWT) GetUserClaims(claimsMap dto.MapClaims)  {
 
 		if key == "aud" {
 			switch value.(type) {
-				case []interface{} :
-					for _ , audValue := range value.([]interface{}) {
-						r.Aud = append(r.Aud, audValue.(string))
-					}
-				default:
-					r.Aud = append(r.Aud, value.(string))
+			case []interface{}:
+				for _, audValue := range value.([]interface{}) {
+					r.Aud = append(r.Aud, audValue.(string))
+				}
+			default:
+				r.Aud = append(r.Aud, value.(string))
 			}
 		}
 
@@ -124,7 +125,7 @@ func (r *JWT) GetUserClaims(claimsMap dto.MapClaims)  {
 		}
 
 		if key == "realm_access" {
-			for _ , realm := range value.(map[string]interface{}) {
+			for _, realm := range value.(map[string]interface{}) {
 				for _, realmStrRoles := range realm.([]interface{}) {
 					r.RealmAccess.Roles = append(r.RealmAccess.Roles, realmStrRoles.(string))
 				}
@@ -140,10 +141,10 @@ func (r *JWT) GetUserClaims(claimsMap dto.MapClaims)  {
 						}
 					}
 				}
-				if index == "auth-svc"{
-					for _, authSvc := range resources.(map[string]interface{}){
+				if index == "auth-svc" {
+					for _, authSvc := range resources.(map[string]interface{}) {
 						for _, authSvcRoles := range authSvc.([]interface{}) {
-							r.ResourceAccess.AuthSvc.Roles = append(r.ResourceAccess.AuthSvc.Roles , authSvcRoles.(string))
+							r.ResourceAccess.AuthSvc.Roles = append(r.ResourceAccess.AuthSvc.Roles, authSvcRoles.(string))
 						}
 					}
 				}
@@ -157,15 +158,15 @@ func (r *JWT) GetUserClaims(claimsMap dto.MapClaims)  {
 			}
 		}
 
-		if key == "scope"{
+		if key == "scope" {
 			r.Scope = value.(string)
 		}
 
-		if key == "preferred_username"{
+		if key == "preferred_username" {
 			r.PreferredUsername = value.(string)
 		}
 
-		if key == "email"{
+		if key == "email" {
 			r.Email = value.(string)
 		}
 	}
@@ -174,27 +175,25 @@ func (r *JWT) GetUserClaims(claimsMap dto.MapClaims)  {
 }
 
 func (r *JWT) SetTokenDetails(req TokenDetails) {
-	r.Token.AccessToken 		= req.AccessToken
-	r.Token.RefreshToken 		= req.RefreshToken
-	r.Token.RefreshExpiresIn 	= req.RefreshExpiresIn
-	r.Token.ExpiresIn 			= req.ExpiresIn
+	r.Token.AccessToken = req.AccessToken
+	r.Token.RefreshToken = req.RefreshToken
+	r.Token.RefreshExpiresIn = req.RefreshExpiresIn
+	r.Token.ExpiresIn = req.ExpiresIn
 }
 
 func (r *JWT) SSOJWTDetails() *dto.SSOSignInResponse {
 	return &dto.SSOSignInResponse{
-		AccessToken: 	r.Token.AccessToken,
-		RefreshToken:   r.Token.RefreshToken,
+		AccessToken:      r.Token.AccessToken,
+		RefreshToken:     r.Token.RefreshToken,
 		RefreshExpiresIn: r.Token.RefreshExpiresIn,
-		SessionState: 	r.SessionState,
-		IssuedAt: 		r.Iat,
-		ExpiresIn:    	r.Exp,
+		SessionState:     r.SessionState,
+		IssuedAt:         r.Iat,
+		ExpiresIn:        r.Exp,
 	}
 }
 
-
-
 // GetUserDetail Must be Refactored To integrate Properly with functions.
-func GetUserDetail(ctx context.Context) (*TokenDetails,*errs.AppError){
+func GetUserDetail(ctx context.Context) (*TokenDetails, *errs.AppError) {
 	value := ctx.Value(constants.UserMapKey)
 	mapUserContext, ok := value.(TokenDetails)
 	if !ok {
@@ -202,4 +201,3 @@ func GetUserDetail(ctx context.Context) (*TokenDetails,*errs.AppError){
 	}
 	return &mapUserContext, nil
 }
-

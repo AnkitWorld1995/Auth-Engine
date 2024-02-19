@@ -1,13 +1,19 @@
 package utility
 
 import (
+	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/chsys/userauthenticationengine/pkg/lib/constants"
 	errs "github.com/chsys/userauthenticationengine/pkg/lib/error"
 	"golang.org/x/crypto/bcrypt"
+	"hash"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/mail"
 	"strings"
 	"sync"
@@ -112,4 +118,41 @@ func GenerateOTP(max int) (string, error) {
 		b[i] = table[int(b[i])%len(table)]
 	}
 	return string(b), nil
+}
+
+func SingleSHA(b []byte) string {
+	var h hash.Hash = sha256.New()
+	h.Write(b)
+	sha1Hash := hex.EncodeToString(h.Sum(nil))
+
+	return sha1Hash
+}
+
+func CreateFileBuffer(input multipart.File) (*bytes.Buffer, *errs.AppError) {
+	buffer := bytes.NewBuffer(nil)
+	_, err := io.Copy(buffer, input)
+	if err != nil {
+		return nil, errs.NewUnexpectedError(err.Error())
+	}
+	return buffer, nil
+}
+
+func MakeByte(str string) []byte {
+	newByte := make([]byte, 0)
+	newByte = []byte(str)
+
+	return newByte
+}
+
+func JoinChannelError(err chan error) error{
+	if len(err) > 0 {
+		var newErr []error
+		for e := range err {
+			newErr = append(newErr, e)
+		}
+		err2 := errors.Join(newErr...)
+		return err2
+	}else {
+		return nil
+	}
 }
